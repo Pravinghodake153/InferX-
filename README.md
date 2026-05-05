@@ -3,10 +3,10 @@ Hackathon Theme 3: AI-Based Tender Evaluation and Eligibility Analysis for Gover
 
 InferX is an auditable, human-in-the-loop AI platform designed to automate the extraction and evaluation of tender eligibility criteria against bidder submissions. Built for government-grade procurement, it prioritizes transparency, explainability, and safety over pure automation.
 
-🚀 Live Demo
+Live Demo
 Frontend App: [Insert Vercel URL]
 Backend API Docs: [Insert Hugging Face Space URL]/docs
-🎯 How We Solved the Problem Statement
+How We Solved the Problem Statement
 We directly addressed the core "Non-Negotiables" of Theme 3:
 
 "Understand the tender & Extract eligibility criteria"
@@ -26,7 +26,7 @@ Explainability: Every verdict includes a raw_snippet and source_page mapping dir
 
 The platform enforces an immutable workflow: Extract -> Lock Schema -> Evaluate -> Consolidate.
 Support for deterministic model execution (Temperature = 0.0) ensures reproducible results.
-🏗️ Architecture & Technology Stack
+Architecture & Technology Stack
 Frontend: React (Vite), React Router, Custom CSS (Dark/Light themes with modern UI).
 Backend: FastAPI (Python) for asynchronous, high-performance API routing.
 Document Processing: PyMuPDF (fitz), Camelot, pytesseract (OCR), Pillow.
@@ -72,6 +72,6 @@ chmod +x run_frontend.sh
 ./run_frontend.sh
 Frontend runs on http://localhost:5173
 
-⚠️ Key Technical Decisions & Trade-offs
+Key Technical Decisions & Trade-offs (Must read)
 Reasoning Models vs Fast Extractors: We support DeepSeek-R1 (Reasoning) but actively strip the <think> tags using custom regex parsers to prevent Pydantic schema crashes. We recommend using fast-extraction models (Gemini 2.5 Flash / DeepSeek V3) for production speed.
 Chunking Strategy: To preserve the context of legal conditions, we bypass traditional chunking and utilize the massive context windows (up to 2M tokens) of modern models, passing entire documents in single payloads.
