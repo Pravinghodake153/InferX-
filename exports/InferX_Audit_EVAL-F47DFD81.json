@@ -1,0 +1,35 @@
+{
+  "audit_metadata": {
+    "evaluation_id": "EVAL-F47DFD81",
+    "timestamp": "2026-04-28T10:15:03.393365",
+    "model_version": "InferX v2.0",
+    "pipeline_version": "7-step",
+    "provider": "gemini",
+    "sha256_hash": "9eeea80dcdf5df29bcc48dfda5b51a8726c320a1d28ffa9d6136d032b672eeee",
+    "criteria_count": 0,
+    "evidence_count": 0,
+    "issues_count": 0
+  },
+  "evaluation_data": {
+    "criteria": [],
+    "evidence": [],
+    "evaluation": [],
+    "final_evaluation": [],
+    "field_mappings": [],
+    "verification": [],
+    "pii_masking": {
+      "enabled": false,
+      "mappings": [],
+      "masked_fields_count": 0
+    },
+    "issues": [],
+    "pipeline_steps": []
+  },
+  "integrity": {
+    "algorithm": "SHA-256",
+    "hash": "9eeea80dcdf5df29bcc48dfda5b51a8726c320a1d28ffa9d6136d032b672eeee",
+    "tamper_proof": true,
+    "generated_at": "2026-04-28T10:15:03.393365",
+    "disclaimer": "This audit log is machine-generated. Verify hash for tamper detection."
+  }
+}

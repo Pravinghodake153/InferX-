@@ -1,0 +1,9 @@
+node_modules/
+venv/
+__pycache__/
+_uploads/
+.env
+.env.production
+.DS_Store
+*.pyc
+.agents/

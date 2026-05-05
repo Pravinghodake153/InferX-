@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InferX — AI Tender Evaluation System</title>
+    <meta name="description"
+        content="Government-grade AI-powered tender evaluation system for CRPF. Automated eligibility assessment with full audit trail.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+
+<body>
+
+    <!-- ═══════════════════════ NAVBAR ═══════════════════════ -->
+    <nav class="navbar">
+        <div class="navbar-brand">
+            <div class="logo-icon">IX</div>
+            <span>InferX</span>
+            <span class="navbar-badge">AI Tender Evaluation</span>
+        </div>
+        <div class="navbar-right">
+            <button class="settings-btn" id="historyBtn" onclick="toggleHistory()" title="View History" style="margin-right:8px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+            </button>
+            <button class="settings-btn" id="settingsBtn" onclick="toggleSettings()" title="Settings">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path
+                        d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z">
+                    </path>
+                </svg>
+            </button>
+            <div class="provider-indicator" id="providerIndicator">
+                <span class="provider-dot gemini"></span>
+                <span id="providerName">Gemini</span>
+            </div>
+            <div class="status-dot"></div>
+            <span class="navbar-status">System Online</span>
+        </div>
+    </nav>
+
+    <!-- ═══════════════════════ MAIN ═══════════════════════ -->
+    <div class="main-container">
+
+        <!-- ── Hero Tagline ── -->
+        <div class="hero-tagline">
+            <h1>Deterministic AI Evaluation with Human-in-the-Loop Validation</h1>
+            <p>Government-grade document intelligence — extract, evaluate, and audit tender eligibility with full
+                transparency.</p>
+        </div>
+
+        <!-- ── Upload Section ── -->
+        <section class="upload-section">
+            <div class="upload-card" id="tenderCard">
+                <div class="upload-label">
+                    <span class="upload-label-number">1</span>
+                    Tender Document
+                </div>
+                <div class="drop-zone" id="tenderDropZone" onclick="document.getElementById('tenderFile').click()">
+                    <input type="file" id="tenderFile" accept=".pdf,.txt,.docx,.png,.jpg,.jpeg,.webp,.bmp,.tif,.tiff">
+                    <div class="drop-icon">📄</div>
+                    <div class="drop-text">Drop file or <strong>browse</strong></div>
+                    <div class="drop-text" style="font-size:0.72rem; margin-top:4px; color:var(--text-muted);">PDF, TXT,
+                        or DOCX</div>
+                </div>
+                <div class="file-name-display" id="tenderFileName">✓ <span></span></div>
+            </div>
+
+            <div class="upload-card" id="bidderCard">
+                <div class="upload-label">
+                    <span class="upload-label-number">2</span>
+                    Bidder Document
+                </div>
+                <div class="drop-zone" id="bidderDropZone" onclick="document.getElementById('bidderFile').click()">
+                    <input type="file" id="bidderFile" accept=".pdf,.txt,.docx,.png,.jpg,.jpeg,.webp,.bmp,.tif,.tiff">
+                    <div class="drop-icon">📋</div>
+                    <div class="drop-text">Drop file or <strong>browse</strong></div>
+                    <div class="drop-text" style="font-size:0.72rem; margin-top:4px; color:var(--text-muted);">PDF, TXT,
+                        or DOCX</div>
+                </div>
+                <div class="file-name-display" id="bidderFileName">✓ <span></span></div>
+            </div>
+        </section>
+
+        <!-- ── Run Bar ── -->
+        <div class="run-bar">
+            <button class="btn-extract" id="btnExtract" disabled onclick="runExtractionOnly()">
+                Run Document Extraction Only
+            </button>
+            <button class="btn-evaluate" id="btnEvaluate" disabled onclick="runEvaluation()">
+                ▶ Run AI Evaluation
+            </button>
+        </div>
+
+        <!-- ── Progress ── -->
+        <div class="progress-container" id="progressContainer">
+            <div class="progress-steps">
+                <div class="progress-step" id="prog-pii">
+                    <div class="fill"></div>
+                    <div class="step-label">PII Mask</div>
+                </div>
+                <div class="progress-step" id="prog-ingest">
+                    <div class="fill"></div>
+                    <div class="step-label">Tender</div>
+                </div>
+                <div class="progress-step" id="prog-bidder">
+                    <div class="fill"></div>
+                    <div class="step-label">Bidder</div>
+                </div>
+                <div class="progress-step" id="prog-fieldmap">
+                    <div class="fill"></div>
+                    <div class="step-label">Mapping</div>
+                </div>
+                <div class="progress-step" id="prog-eval">
+                    <div class="fill"></div>
+                    <div class="step-label">Evaluation</div>
+                </div>
+                <div class="progress-step" id="prog-verify">
+                    <div class="fill"></div>
+                    <div class="step-label">Verify</div>
+                </div>
+                <div class="progress-step" id="prog-rules">
+                    <div class="fill"></div>
+                    <div class="step-label">Vigilance</div>
+                </div>
+            </div>
+            <div class="progress-label" id="progressLabel">Initializing pipeline...</div>
+        </div>
+
+        <!-- ═══════════════════════ RESULTS ═══════════════════════ -->
+        <div class="tabs-container" id="tabsContainer">
+
+            <!-- Audit Header Banner -->
+            <div class="audit-header" id="auditHeader">
+                <div class="audit-row">
+                    <div class="audit-item">
+                        <span class="audit-label">Evaluation ID</span>
+                        <span class="audit-value" id="auditEvalId">—</span>
+                    </div>
+                    <div class="audit-item">
+                        <span class="audit-label">Timestamp</span>
+                        <span class="audit-value" id="auditTimestamp">—</span>
+                    </div>
+                    <div class="audit-item">
+                        <span class="audit-label">Model</span>
+                        <span class="audit-value" id="auditModel">InferX v2.0</span>
+                    </div>
+                    <div class="audit-item">
+                        <span class="audit-label">SHA-256</span>
+                        <span class="audit-value mono" id="auditHash">—</span>
+                    </div>
+                    <div class="audit-badge">
+                        🔐 Tamper-Proof
+                    </div>
+                </div>
+            </div>
+
+            <!-- Summary Cards -->
+            <div class="summary-row" id="summaryRow">
+                <div class="summary-card total">
+                    <div class="sc-value" id="scTotal">0</div>
+                    <div class="sc-label">Total Criteria</div>
+                </div>
+                <div class="summary-card pass-card">
+                    <div class="sc-value" id="scPass">0</div>
+                    <div class="sc-label">Passed</div>
+                </div>
+                <div class="summary-card fail-card">
+                    <div class="sc-value" id="scFail">0</div>
+                    <div class="sc-label">Failed</div>
+                </div>
+                <div class="summary-card review-card">
+                    <div class="sc-value" id="scReview">0</div>
+                    <div class="sc-label">Review</div>
+                </div>
+            </div>
+
+            <div class="tab-bar">
+                <button class="tab-btn active" data-tab="results" onclick="switchTab('results')">
+                    Results <span class="tab-badge" id="badgeResults">0</span>
+                </button>
+                <button class="tab-btn" data-tab="review" onclick="switchTab('review')">
+                    ⚠ Review Required <span class="tab-badge warn" id="badgeReview">0</span>
+                </button>
+                <button class="tab-btn" data-tab="explain" onclick="switchTab('explain')">
+                    Explainability
+                </button>
+                <button class="tab-btn" data-tab="finaleval" onclick="switchTab('finaleval')">
+                    🧠 AI Analysis <span class="tab-badge" id="badgeFinalEval">0</span>
+                </button>
+                <button class="tab-btn" data-tab="fieldmap" onclick="switchTab('fieldmap')">
+                    🔗 Field Mapping <span class="tab-badge" id="badgeFieldMap">0</span>
+                </button>
+                <button class="tab-btn" data-tab="verification" onclick="switchTab('verification')">
+                    ✔ Verification <span class="tab-badge" id="badgeVerification">0</span>
+                </button>
+                <button class="tab-btn" data-tab="pii" onclick="switchTab('pii')">
+                    🔒 Privacy &amp; PII <span class="tab-badge" id="badgePII">0</span>
+                </button>
+                <button class="tab-btn" data-tab="docview" onclick="switchTab('docview')">
+                    Document View
+                </button>
+                <button class="tab-btn" data-tab="layoutdebug" onclick="switchTab('layoutdebug')">
+                    🧾 Layout Debug
+                </button>
+                <button class="tab-btn" data-tab="gallery" onclick="switchTab('gallery')">
+                    🖼 Image Gallery
+                </button>
+                <button class="tab-btn" data-tab="extract" onclick="switchTab('extract')">
+                    Text Extraction
+                </button>
+                <button class="tab-btn" data-tab="issues" onclick="switchTab('issues')">
+                    🚨 Vigilance <span class="tab-badge danger" id="badgeIssues">0</span>
+                </button>
+            </div>
+
+            <!-- Tab: Results Table -->
+            <div class="tab-content active" id="tab-results">
+                <table class="results-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Criterion</th>
+                            <th>Category</th>
+                            <th>Required</th>
+                            <th>Found</th>
+                            <th>Confidence</th>
+                            <th>Verdict</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultsBody"></tbody>
+                </table>
+            </div>
+
+            <!-- Tab: Review Required -->
+            <div class="tab-content" id="tab-review">
+                <div id="reviewList"></div>
+            </div>
+
+            <!-- Tab: Explainability -->
+            <div class="tab-content" id="tab-explain">
+                <div id="explainList"></div>
+            </div>
+
+            <!-- Tab: Field Mapping -->
+            <div class="tab-content" id="tab-fieldmap">
+                <div class="fieldmap-header">
+                    <h3>🔗 Semantic Field Mapping</h3>
+                    <p class="fieldmap-desc">Shows how tender criteria were matched to bidder document fields using semantic analysis.</p>
+                </div>
+                <div id="fieldmapList"></div>
+            </div>
+
+            <!-- Tab: Document View -->
+            <div class="tab-content" id="tab-docview">
+                <div class="docview-container">
+                    <div class="docview-header">
+                        <div class="docview-controls">
+                            <div class="docview-selector">
+                                <button class="docview-btn active" data-doc="tender"
+                                    onclick="switchDocView('tender')">📋 Tender Document</button>
+                                <button class="docview-btn" data-doc="bidder" onclick="switchDocView('bidder')">📄
+                                    Bidder Document</button>
+                            </div>
+                            <div class="docview-pagination">
+                                <button class="docview-page-btn" id="docPrevBtn" onclick="prevDocPage()">&larr;
+                                    Prev</button>
+                                <span class="docview-page-info"><span id="docCurrentPage">1</span> / <span
+                                        id="docTotalPages">1</span></span>
+                                <button class="docview-page-btn" id="docNextBtn" onclick="nextDocPage()">Next
+                                    &rarr;</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="docview-content" id="docviewContent">
+                        <div class="docview-renderer" id="docviewRenderer"></div>
+                        <div class="docview-fallback" id="docviewFallback" style="display:none;">
+                            <p>Layout rendering not available. Document view is loading...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Layout Debug -->
+            <div class="tab-content" id="tab-layoutdebug">
+                <div style="display:flex;flex-direction:column;gap:1rem;">
+                    <div
+                        style="display:flex;justify-content:space-between;align-items:center;gap:1rem;background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);padding:0.8rem 1rem;flex-wrap:wrap;">
+                        <div style="display:flex;gap:0.6rem;">
+                            <button class="docview-btn active" data-layout-doc="tender"
+                                onclick="switchLayoutDebugDoc('tender')">📋 Tender</button>
+                            <button class="docview-btn" data-layout-doc="bidder"
+                                onclick="switchLayoutDebugDoc('bidder')">📄 Bidder</button>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:0.7rem;">
+                            <button class="docview-page-btn" id="layoutPrevBtn" onclick="prevLayoutDebugPage()">&larr;
+                                Prev</button>
+                            <span class="docview-page-info">Page <span id="layoutCurrentPage">1</span> / <span
+                                    id="layoutTotalPages">1</span></span>
+                            <button class="docview-page-btn" id="layoutNextBtn" onclick="nextLayoutDebugPage()">Next
+                                &rarr;</button>
+                        </div>
+                    </div>
+                    <div
+                        style="background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);padding:1rem;max-height:70vh;overflow:auto;">
+                        <pre id="layoutDebugPre"
+                            style="white-space:pre-wrap;font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;font-size:0.82rem;line-height:1.45;color:var(--text-primary);margin:0;"></pre>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Image Gallery -->
+            <div class="tab-content" id="tab-gallery">
+                <div class="gallery-section">
+                    <div class="gallery-title">Tender Images</div>
+                    <div id="tenderGalleryGrid" class="gallery-grid"></div>
+                </div>
+                <div class="gallery-section" style="margin-top:1rem;">
+                    <div class="gallery-title">Bidder Images</div>
+                    <div id="bidderGalleryGrid" class="gallery-grid"></div>
+                </div>
+            </div>
+
+            <!-- Tab: Text Extraction -->
+            <div class="tab-content" id="tab-extract">
+                <div class="extract-container">
+                    <div class="extract-toolbar">
+                        <div class="extract-doc-switch">
+                            <button class="extract-doc-btn active" data-doc="tender"
+                                onclick="switchExtractDoc('tender')">📋 Tender</button>
+                            <button class="extract-doc-btn" data-doc="bidder" onclick="switchExtractDoc('bidder')">📄
+                                Bidder</button>
+                        </div>
+                        <div class="extract-page-nav">
+                            <button class="extract-nav-btn" id="extractPrevBtn" onclick="prevExtractPage()">&larr;
+                                Prev</button>
+                            <span class="extract-page-indicator">Page <span id="extractCurrentPage">1</span> / <span
+                                    id="extractTotalPages">1</span></span>
+                            <button class="extract-nav-btn" id="extractNextBtn" onclick="nextExtractPage()">Next
+                                &rarr;</button>
+                        </div>
+                    </div>
+                    <div class="extract-summary" id="extractSummary"></div>
+                    <div class="extract-panel" id="extractPanel"></div>
+                </div>
+            </div>
+
+            <!-- Tab: Issues / Vigilance -->
+            <div class="tab-content" id="tab-issues">
+                <div class="vigilance-header">
+                    <h3>🚨 Vigilance &amp; Error Detection</h3>
+                    <p class="vigilance-desc">Automated detection of missing data, low confidence values, conflicts, and suspicious patterns.</p>
+                </div>
+                <div id="issuesList"></div>
+            </div>
+
+            <!-- Tab: LLM Final Evaluation -->
+            <div class="tab-content" id="tab-finaleval">
+                <div class="vigilance-header">
+                    <h3>🧠 AI Analysis — LLM-Based Evaluation</h3>
+                    <p class="vigilance-desc">AI second opinion on each criterion. Compares rule engine verdict with contextual analysis for higher accuracy.</p>
+                </div>
+                <div id="finalEvalList"></div>
+            </div>
+
+            <!-- Tab: PII Masking -->
+            <div class="tab-content" id="tab-pii">
+                <div class="vigilance-header">
+                    <h3>🔒 Privacy &amp; PII Report</h3>
+                    <p class="vigilance-desc">Sensitive identifiers detected and catalogued. Masked data available for audit review only.</p>
+                </div>
+                <div id="piiList"></div>
+            </div>
+
+            <!-- Tab: Verification -->
+            <div class="tab-content" id="tab-verification">
+                <div class="vigilance-header">
+                    <h3>✔ Verification &amp; Compliance</h3>
+                    <p class="vigilance-desc">Format validation for GSTIN and PAN identifiers with state code and entity type metadata.</p>
+                </div>
+                <div id="verificationList"></div>
+            </div>
+
+            <!-- Final Verdict Banner -->
+            <div class="verdict-banner" id="verdictBanner">
+                <div id="verdictText"></div>
+                <div class="verdict-sub" id="verdictSub"></div>
+            </div>
+
+            <!-- Export Section -->
+            <div class="export-section" id="exportSection">
+                <div class="export-header">
+                    <h3>📤 Export Evaluation</h3>
+                    <span class="export-desc">Download audit-ready reports with tamper-proof verification</span>
+                </div>
+                <div class="export-buttons">
+                    <button class="export-btn pdf" onclick="downloadPDF()" id="btnExportPDF">
+                        <span class="export-icon">📄</span>
+                        <span class="export-label">PDF Report</span>
+                        <span class="export-hint">Full evaluation with verdicts</span>
+                    </button>
+                    <button class="export-btn excel" onclick="downloadExcel()" id="btnExportExcel">
+                        <span class="export-icon">📊</span>
+                        <span class="export-label">Excel Matrix</span>
+                        <span class="export-hint">Structured spreadsheet</span>
+                    </button>
+                    <button class="export-btn audit" onclick="downloadAudit()" id="btnExportAudit">
+                        <span class="export-icon">🔐</span>
+                        <span class="export-label">Audit Log</span>
+                        <span class="export-hint">SHA-256 tamper-proof JSON</span>
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ═══════════════════ ERROR PANEL (detailed) ═══════════════════ -->
+    <div class="main-container">
+        <div class="error-panel" id="errorPanel"></div>
+    </div>
+
+    <!-- ═══════════════════ SETTINGS PANEL ═══════════════════ -->
+    <div class="settings-overlay" id="settingsOverlay" onclick="toggleSettings()"></div>
+    <div class="settings-panel" id="settingsPanel">
+        <div class="settings-header">
+            <h3>⚙️ Settings</h3>
+            <button class="settings-close" onclick="toggleSettings()">✕</button>
+        </div>
+        <div class="settings-body">
+            <div class="setting-group">
+                <div class="setting-label">AI Provider</div>
+                <div class="setting-description">Select the LLM backend. If the primary fails, the system auto-falls
+                    back to the other.</div>
+                <div class="provider-toggle" id="providerToggle">
+                    <button class="provider-option active" data-provider="gemini" onclick="switchProvider('gemini')">
+                        <span class="provider-icon gemini-icon">✦</span>
+                        <span class="provider-name">Google Gemini</span>
+                        <span class="provider-model">gemini-2.0-flash</span>
+                    </button>
+                    <button class="provider-option" data-provider="openai" onclick="switchProvider('openai')">
+                        <span class="provider-icon openai-icon">◎</span>
+                        <span class="provider-name">OpenAI</span>
+                        <span class="provider-model">gpt-4o-mini</span>
+                    </button>
+                    <button class="provider-option" data-provider="openrouter" onclick="switchProvider('openrouter')">
+                        <span class="provider-icon openrouter-icon">⌘</span>
+                        <span class="provider-name">OpenRouter</span>
+                        <span class="provider-model">claude-3-haiku</span>
+                    </button>
+                </div>
+            </div>
+            <div class="setting-group">
+                <div class="setting-label">Auto-Fallback</div>
+                <div class="setting-description">If the selected provider fails or is rate-limited, the system will
+                    automatically try the other provider.</div>
+                <div class="fallback-badge">✓ Enabled (always on)</div>
+            </div>
+            <div class="setting-group">
+                <div class="setting-label">API Key Status</div>
+                <div class="api-key-status" id="apiKeyStatus">
+                    <div class="key-row">
+                        <span class="key-name">Gemini</span>
+                        <span class="key-status" id="geminiKeyStatus">Checking...</span>
+                    </div>
+                    <div class="key-row">
+                        <span class="key-name">OpenAI</span>
+                        <span class="key-status" id="openaiKeyStatus">Checking...</span>
+                    </div>
+                    <div class="key-row">
+                        <span class="key-name">OpenRouter</span>
+                        <span class="key-status" id="openrouterKeyStatus">Checking...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════ HISTORY MODAL ═══════════════════ -->
+    <style>
+        .history-panel-custom {
+            position: fixed;
+            top: 0;
+            right: -100vw; /* Hide completely */
+            max-width: 800px !important;
+            width: 90vw !important;
+            height: 100vh;
+            background: var(--bg-secondary);
+            border-left: 1px solid var(--border-subtle);
+            box-shadow: -8px 0 40px rgba(0, 0, 0, 0.4);
+            z-index: 950;
+            transition: right 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+        .history-panel-custom.open {
+            right: 0 !important;
+        }
+    </style>
+    <div class="settings-overlay" id="historyOverlay" onclick="toggleHistory()"></div>
+    <div class="history-panel-custom" id="historyPanel">
+        <div class="settings-header">
+            <h3>Past Extractions & Evaluations</h3>
+            <button class="settings-close" onclick="toggleHistory()">✕</button>
+        </div>
+        <div class="settings-body" style="padding: 0; max-height: 70vh; overflow-y: auto;">
+            <div id="historyLoading" style="padding: 2rem; text-align: center; color: var(--text-muted);">Loading past data from Firebase...</div>
+            <table class="results-table" id="historyTable" style="display:none; margin:0; width: 100%;">
+                <thead style="position: sticky; top: 0; background: var(--bg-card); z-index: 10;">
+                    <tr>
+                        <th style="padding:12px;">Date / ID</th>
+                        <th style="padding:12px;">Documents</th>
+                        <th style="padding:12px;">Extraction / Verdict</th>
+                        <th style="padding:12px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="historyTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ═══════════════════ ERROR TOAST ═══════════════════ -->
+    <div class="error-toast" id="errorToast"></div>
+
+    <!-- ═══════════════════ IMAGE MODAL ═══════════════════ -->
+    <div class="image-modal" id="imageModal" onclick="closeImageModal()">
+        <div class="image-modal-inner" onclick="event.stopPropagation()">
+            <button class="image-modal-close" onclick="closeImageModal()">✕</button>
+            <img id="imageModalImg" class="image-modal-img" alt="Extracted image" />
+            <div id="imageModalMeta" class="image-modal-meta"></div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════ APPLICATION LOGIC ═══════════════════ -->
+    <script type="module" src="/static/firebase.js"></script>
+    <script src="/static/app.js"></script>
+
+</body>
+
+</html>

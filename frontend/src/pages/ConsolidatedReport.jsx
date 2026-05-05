@@ -1,0 +1,394 @@
+import { useState } from 'react';
+import { useApp } from '../context/useApp';
+import VerdictBadge from '../components/VerdictBadge';
+import ConsolidatedGraphs from '../components/ConsolidatedGraphs';
+
+const API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+export default function ConsolidatedReport() {
+  const { selectedProject, updateProject } = useApp();
+  const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState('');
+  const [report, setReport] = useState(selectedProject?.consolidatedReport || null);
+  const [error, setError] = useState('');
+  const [selectedBidder, setSelectedBidder] = useState(null);
+  const [abortController, setAbortController] = useState(null);
+
+  const isSandbox = selectedProject?.sandboxMode;
+  const bidders = isSandbox 
+    ? (selectedProject?.sandboxData?.bidders || []) 
+    : (selectedProject?.bidders || []);
+    
+  const tenderText = selectedProject?.extractedText || '';
+  const bidderData = selectedProject?.extractedBidderData || [];
+
+  const canRun = tenderText && bidders.length > 0 && bidderData.length > 0;
+
+  const handleRunConsolidated = async () => {
+    if (!canRun) return;
+    setLoading(true);
+    setError('');
+    setProgress('Preparing bidder data...');
+
+    const controller = new AbortController();
+    setAbortController(controller);
+
+    try {
+      // Build request from extracted data
+      const bidderPayloads = bidders.map((b) => {
+        const bId = isSandbox ? (b.ubid || b._ubid) : b.id;
+        const bName = b.name || b.company_name || 'Bidder';
+        const extracted = bidderData.find(d => d.bidder_id === bId);
+        
+        // In sandbox mode, if the strict ID match fails, fall back to index matching if length is exactly 1
+        const extractedText = extracted?.extracted_text 
+          || (isSandbox && bidders.length === 1 && bidderData.length === 1 ? bidderData[0].extracted_text : '');
+          
+        return {
+          bidder_id: bId,
+          bidder_name: bName,
+          bidder_text: extractedText,
+        };
+      }).filter(b => b.bidder_text);
+
+      if (bidderPayloads.length === 0) {
+        setError('No bidder documents have extracted text. Please run extraction from the Upload page first.');
+        setLoading(false);
+        return;
+      }
+
+      // Get officer-approved criteria (decoupled architecture)
+      const approvedCriteria = selectedProject.extractedCriteria || [];
+      const payload = {
+        tender_text: tenderText,
+        bidders: bidderPayloads,
+      };
+      if (approvedCriteria.length > 0) {
+        payload.criteria = approvedCriteria;
+        setProgress(`⚡ Evaluating ${bidderPayloads.length} bidders using ${approvedCriteria.length} pre-approved criteria...`);
+      } else {
+        setProgress(`Evaluating ${bidderPayloads.length} bidders against tender (extracting criteria from scratch)...`);
+      }
+
+      const res = await fetch(`${API}/api/evaluate/consolidated`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || `Server error: ${res.status}`);
+      }
+      const data = await res.json();
+      setReport(data);
+      if (selectedProject) {
+        updateProject(selectedProject.id, { consolidatedReport: data });
+      }
+      setProgress('');
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        setError('Evaluation stopped by user.');
+      } else {
+        setError(err.message || 'Evaluation failed. Check backend logs.');
+      }
+    } finally {
+      setLoading(false);
+      setAbortController(null);
+    }
+  };
+
+  const handleStopEvaluation = async () => {
+    if (abortController) {
+      abortController.abort();
+    }
+    // Also hit the backend to force LLM processes to abort instantly
+    try {
+      await fetch(`${API}/api/evaluate/stop`, { method: 'POST' });
+    } catch (e) {
+      console.error('Failed to notify backend to stop evaluation', e);
+    }
+  };
+
+  // ── Verdict color helper ──
+  const verdictStyle = (verdict) => {
+    if (verdict === 'ELIGIBLE') return { background: '#dcfce7', color: '#166534' };
+    if (verdict === 'NOT_ELIGIBLE') return { background: '#fecaca', color: '#991b1b' };
+    return { background: '#fef3c7', color: '#92400e' };
+  };
+
+  if (!selectedProject) {
+    return (
+      <div>
+        <h1>Consolidated Report</h1>
+        <div className="card">
+          <div className="empty-state" style={{ padding: 40 }}>
+            <div className="icon">⚠️</div>
+            <h3>No Project Selected</h3>
+            <p>Select a project from the Dashboard first.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div style={{ marginBottom: 24 }}>
+        <h1>Consolidated Bidder Report</h1>
+        <p style={{ color: 'var(--text-muted)', marginTop: 4 }}>
+          Multi-bidder comparison — {bidders.length} bidder(s) vs 1 tender
+        </p>
+      </div>
+
+      {/* Run Button */}
+      {!report && (
+        <div className="card" style={{ marginBottom: 24 }}>
+          <div className="card-header"><h3>📊 Run Consolidated Evaluation</h3></div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <span>{tenderText ? '✅' : '⬜'}</span> Tender text extracted ({tenderText.length.toLocaleString()} chars)
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <span>{bidders.length > 0 ? '✅' : '⬜'}</span> {bidders.length} bidder(s) registered
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <span>{bidderData.length > 0 ? '✅' : '⬜'}</span> {bidderData.length} bidder document(s) extracted
+            </div>
+          </div>
+
+          {error && <div style={{ padding: '12px 16px', background: 'var(--fail-bg)', color: 'var(--fail)', borderRadius: 8, marginBottom: 12 }}>❌ {error}</div>}
+          {progress && <div style={{ padding: '12px 16px', background: 'var(--review-bg)', color: 'var(--review)', borderRadius: 8, marginBottom: 12 }}>⏳ {progress}</div>}
+
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button
+              className="btn btn-primary"
+              onClick={handleRunConsolidated}
+              disabled={!canRun || loading}
+              style={{ padding: '12px 32px', fontSize: '1rem', flex: 1 }}
+            >
+              {loading ? '⚡ Running Consolidated Evaluation...' : `⚡ Evaluate All ${bidders.length} Bidders`}
+            </button>
+
+            {loading && (
+              <button
+                className="btn btn-outline"
+                onClick={handleStopEvaluation}
+                style={{ padding: '12px 24px', fontSize: '1rem', color: 'var(--fail)', borderColor: 'var(--fail)', backgroundColor: 'transparent' }}
+              >
+                ⏹ Stop Evaluation
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Results */}
+      {report && (
+        <>
+          {/* Summary Cards */}
+          <div className="card-grid" style={{ marginBottom: 24 }}>
+            <div className="stat-card pass">
+              <div className="stat-value">{report.summary.eligible}</div>
+              <div className="stat-label">Eligible</div>
+            </div>
+            <div className="stat-card" style={{ borderColor: 'var(--fail)' }}>
+              <div className="stat-value" style={{ color: 'var(--fail)' }}>{report.summary.not_eligible}</div>
+              <div className="stat-label">Not Eligible</div>
+            </div>
+            <div className="stat-card review">
+              <div className="stat-value">{report.summary.review_required}</div>
+              <div className="stat-label">Review Required</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-value">{report.bidder_count}</div>
+              <div className="stat-label">Total Bidders</div>
+            </div>
+          </div>
+
+          {/* ── GRAPHS (Comparative Analytics) ── */}
+          <ConsolidatedGraphs report={report} />
+
+          {/* Bidder Comparison Matrix */}
+          <div className="card" style={{ marginBottom: 24, overflow: 'auto' }}>
+            <div className="card-header">
+              <h3>📋 Bidder Comparison Matrix</h3>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                Rows = Criteria, Columns = Bidders
+              </span>
+            </div>
+            <table className="data-table" style={{ fontSize: '0.8rem', minWidth: 600 }}>
+              <thead>
+                <tr>
+                  <th style={{ position: 'sticky', left: 0, background: 'var(--bg-primary)', zIndex: 2, minWidth: 180 }}>Criterion</th>
+                  {report.bidder_results.map((b) => (
+                    <th key={b.bidder_id} style={{ textAlign: 'center', minWidth: 140 }}>
+                      <div style={{ fontWeight: 700 }}>{b.bidder_name}</div>
+                      <div style={{
+                        fontSize: '0.7rem', fontWeight: 700, marginTop: 4,
+                        padding: '2px 8px', borderRadius: 4, display: 'inline-block',
+                        ...verdictStyle(b.verdict)
+                      }}>
+                        {b.verdict?.replace('_', ' ')}
+                      </div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {(report.criteria || []).map((c) => (
+                  <tr key={c.criterion_id}>
+                    <td style={{ position: 'sticky', left: 0, background: 'var(--bg-primary)', zIndex: 1, fontWeight: 600 }}>
+                      <div>{c.name}</div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                        Req: {c.required_value || '—'}
+                        {c.mandatory === false && <span style={{ marginLeft: 6, color: 'var(--review)', fontStyle: 'italic' }}>(Optional)</span>}
+                      </div>
+                    </td>
+                    {report.bidder_results.map((b) => {
+                      const ev = (b.evaluation || []).find(e => e.criterion_id === c.criterion_id);
+                      return (
+                        <td key={b.bidder_id} style={{ textAlign: 'center' }}>
+                          {ev ? (
+                            <>
+                              <div style={{ fontSize: '0.75rem', marginBottom: 4 }}>{ev.evidence_found || '—'}</div>
+                              <VerdictBadge verdict={ev.result} />
+                            </>
+                          ) : (
+                            <span style={{ color: 'var(--text-muted)' }}>—</span>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Per-Bidder Detail Cards */}
+          <div className="card" style={{ marginBottom: 24 }}>
+            <div className="card-header">
+              <h3>🔍 Bidder Details</h3>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {report.bidder_results.map((b) => (
+                  <button
+                    key={b.bidder_id}
+                    className={`btn btn-sm ${selectedBidder === b.bidder_id ? 'btn-primary' : 'btn-secondary'}`}
+                    onClick={() => setSelectedBidder(selectedBidder === b.bidder_id ? null : b.bidder_id)}
+                  >
+                    {b.bidder_name}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {selectedBidder && (() => {
+              const b = report.bidder_results.find(r => r.bidder_id === selectedBidder);
+              if (!b) return null;
+              return (
+                <div style={{ marginTop: 12 }}>
+                  <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--pass)' }}>{b.pass_count}</div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>PASS</div>
+                    </div>
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--fail)' }}>{b.fail_count}</div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>FAIL</div>
+                    </div>
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--review)' }}>{b.review_count}</div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>REVIEW</div>
+                    </div>
+                  </div>
+
+                  <table className="data-table" style={{ fontSize: '0.85rem' }}>
+                    <thead>
+                      <tr>
+                        <th>Criterion</th>
+                        <th>Required</th>
+                        <th>Found</th>
+                        <th>Confidence</th>
+                        <th>Verdict</th>
+                        <th>Reason</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(b.evaluation || []).map((e, i) => (
+                        <tr key={i}>
+                          <td style={{ fontWeight: 600 }}>{e.criteria_name}</td>
+                          <td>{e.required_value || '—'}</td>
+                          <td>{e.evidence_found || '—'}</td>
+                          <td>{e.confidence}</td>
+                          <td><VerdictBadge verdict={e.result} /></td>
+                          <td style={{ fontSize: '0.75rem', color: 'var(--text-muted)', maxWidth: 300 }}>{e.reason}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+
+                  {/* Verification */}
+                  {b.verification?.length > 0 && (
+                    <div style={{ marginTop: 12 }}>
+                      <h4 style={{ fontSize: '0.85rem', marginBottom: 8 }}>🔐 Identifier Verification</h4>
+                      {b.verification.map((v, i) => (
+                        <div key={i} style={{ fontSize: '0.8rem', marginBottom: 4 }}>
+                          {v.status === 'FORMAT_VALID' ? '✅' : '❌'} <strong>{v.identifier_type}</strong>: {v.identifier} — {v.details}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Issues */}
+                  {b.issues?.length > 0 && (
+                    <div style={{ marginTop: 12 }}>
+                      <h4 style={{ fontSize: '0.85rem', marginBottom: 8 }}>⚠️ Vigilance Alerts</h4>
+                      {b.issues.map((issue, i) => (
+                        <div key={i} style={{ fontSize: '0.8rem', marginBottom: 4, padding: '4px 8px', background: issue.severity === 'HIGH' ? '#fecaca' : '#fef3c7', borderRadius: 4 }}>
+                          [{issue.severity}] {issue.issue_type}: {issue.reason}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* Action Buttons */}
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 24 }}>
+            <button
+              className="btn btn-primary"
+              onClick={async () => {
+                try {
+                  const res = await fetch(`${API}/api/export/consolidated`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(report),
+                  });
+                  if (!res.ok) throw new Error('Export failed');
+                  const blob = await res.blob();
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = 'InferX_Consolidated_Report.pdf';
+                  a.click();
+                  URL.revokeObjectURL(url);
+                } catch (err) {
+                  alert('Export failed: ' + err.message);
+                }
+              }}
+            >
+              📄 Export Consolidated PDF
+            </button>
+            <button className="btn btn-secondary" onClick={() => { setReport(null); setSelectedBidder(null); }}>
+              🔄 Re-run Evaluation
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}

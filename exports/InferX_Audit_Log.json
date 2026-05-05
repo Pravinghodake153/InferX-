@@ -1,0 +1,409 @@
+{
+  "audit_metadata": {
+    "evaluation_id": "EVAL-088017B6",
+    "timestamp": "2026-04-28T09:57:02.850968",
+    "model_version": "InferX v2.0",
+    "pipeline_version": "7-step",
+    "provider": "gemini",
+    "sha256_hash": "c5eb224c4ba89e8808d82dc6bbd191c186377d8b9287ec13a4b30e4cf30dbc26",
+    "criteria_count": 5,
+    "evidence_count": 5,
+    "issues_count": 1
+  },
+  "evaluation_data": {
+    "criteria": [
+      {
+        "criterion_id": "C001",
+        "name": "Annual Turnover",
+        "description": "Minimum turnover requirement",
+        "required_value": "5 crore",
+        "normalized_required_value": 50000000,
+        "type": "numeric",
+        "category": "financial",
+        "mandatory": true,
+        "comparison_operator": ">=",
+        "units": "INR",
+        "source": {
+          "page": 2,
+          "raw_snippet": "The bidder must have a minimum annual turnover of \u20b95 crore",
+          "source_type": null
+        },
+        "confidence": "HIGH"
+      },
+      {
+        "criterion_id": "C002",
+        "name": "GST Registration",
+        "description": "Requirement of valid GST certificate",
+        "required_value": null,
+        "normalized_required_value": null,
+        "type": "document",
+        "category": "compliance",
+        "mandatory": true,
+        "comparison_operator": null,
+        "units": null,
+        "source": {
+          "page": 2,
+          "raw_snippet": "The bidder must be registered under GST and provide a valid GST certificate.",
+          "source_type": null
+        },
+        "confidence": "HIGH"
+      },
+      {
+        "criterion_id": "C003",
+        "name": "Prior Experience",
+        "description": "Minimum number of similar projects completed",
+        "required_value": "3",
+        "normalized_required_value": 3,
+        "type": "numeric",
+        "category": "technical",
+        "mandatory": true,
+        "comparison_operator": ">=",
+        "units": null,
+        "source": {
+          "page": 2,
+          "raw_snippet": "The bidder must have completed at least 3 similar solar installation projects in the last 5 years.",
+          "source_type": null
+        },
+        "confidence": "HIGH"
+      },
+      {
+        "criterion_id": "C004",
+        "name": "Financial Statements",
+        "description": "Requirement of audited financial statements",
+        "required_value": null,
+        "normalized_required_value": null,
+        "type": "document",
+        "category": "financial",
+        "mandatory": true,
+        "comparison_operator": null,
+        "units": null,
+        "source": {
+          "page": 2,
+          "raw_snippet": "The bidder must submit audited financial statements for the last 2 years.",
+          "source_type": null
+        },
+        "confidence": "HIGH"
+      },
+      {
+        "criterion_id": "C005",
+        "name": "ISO Certification",
+        "description": "Requirement of ISO 9001 certification",
+        "required_value": null,
+        "normalized_required_value": null,
+        "type": "document",
+        "category": "technical",
+        "mandatory": true,
+        "comparison_operator": null,
+        "units": null,
+        "source": {
+          "page": 2,
+          "raw_snippet": "The bidder must possess ISO 9001 certification.",
+          "source_type": null
+        },
+        "confidence": "HIGH"
+      }
+    ],
+    "evidence": [
+      {
+        "criterion_id": "C001",
+        "field_detected": "Annual Turnover",
+        "extracted_value": "\u20b96.5 crore",
+        "normalized_value": 65000000,
+        "source": {
+          "document": "bidder_document",
+          "page": 2,
+          "raw_snippet": "The total annual turnover for FY 2023-24 is \u20b96.5 crore as per audited financial statements.",
+          "source_type": null
+        },
+        "confidence": "HIGH"
+      },
+      {
+        "criterion_id": "C002",
+        "field_detected": "GSTIN",
+        "extracted_value": "29ABCDE1234F1Z5",
+        "normalized_value": null,
+        "source": {
+          "document": "bidder_document",
+          "page": 2,
+          "raw_snippet": "GSTIN: 29ABCDE1234F1Z5",
+          "source_type": null
+        },
+        "confidence": "HIGH"
+      },
+      {
+        "criterion_id": "C003",
+        "field_detected": "Experience",
+        "extracted_value": "3",
+        "normalized_value": 3,
+        "source": {
+          "document": "bidder_document",
+          "page": 2,
+          "raw_snippet": "Completed Projects:\n1. Solar Installation - Karnataka Govt Buildings (2022)\n2. Solar Installation - Maharashtra Schools (2021)\n3. Solar Installation - Gujarat Hospitals (2020)",
+          "source_type": null
+        },
+        "confidence": "HIGH"
+      },
+      {
+        "criterion_id": "C004",
+        "field_detected": "Financial Statements",
+        "extracted_value": "Attached",
+        "normalized_value": null,
+        "source": {
+          "document": "bidder_document",
+          "page": 2,
+          "raw_snippet": "Audited financial statements for FY 2022-23 and 2023-24 are attached.",
+          "source_type": null
+        },
+        "confidence": "HIGH"
+      },
+      {
+        "criterion_id": "C005",
+        "field_detected": "ISO Certification",
+        "extracted_value": "ISO 9001:2015",
+        "normalized_value": null,
+        "source": {
+          "document": "bidder_document",
+          "page": 2,
+          "raw_snippet": "ISO 9001:2015 Certified Company.",
+          "source_type": null
+        },
+        "confidence": "HIGH"
+      }
+    ],
+    "evaluation": [
+      {
+        "criterion_id": "C001",
+        "criteria_name": "Annual Turnover",
+        "category": "financial",
+        "required_value": "5 crore",
+        "evidence_found": "\u20b96.5 crore",
+        "result": "PASS",
+        "confidence": "HIGH",
+        "reason": "Required: 5 crore (\u20b950,000,000) | Found: \u20b96.5 crore (\u20b965,000,000) \u2014 meets threshold."
+      },
+      {
+        "criterion_id": "C002",
+        "criteria_name": "GST Registration",
+        "category": "compliance",
+        "required_value": null,
+        "evidence_found": "29ABCDE1234F1Z5",
+        "result": "PASS",
+        "confidence": "HIGH",
+        "reason": "Evidence found: '29ABCDE1234F1Z5'"
+      },
+      {
+        "criterion_id": "C003",
+        "criteria_name": "Prior Experience",
+        "category": "technical",
+        "required_value": "3",
+        "evidence_found": "3",
+        "result": "PASS",
+        "confidence": "HIGH",
+        "reason": "Required: 3 (\u20b93) | Found: 3 (\u20b93) \u2014 meets threshold."
+      },
+      {
+        "criterion_id": "C004",
+        "criteria_name": "Financial Statements",
+        "category": "financial",
+        "required_value": null,
+        "evidence_found": "Attached",
+        "result": "PASS",
+        "confidence": "HIGH",
+        "reason": "Evidence found: 'Attached'"
+      },
+      {
+        "criterion_id": "C005",
+        "criteria_name": "ISO Certification",
+        "category": "technical",
+        "required_value": null,
+        "evidence_found": "ISO 9001:2015",
+        "result": "PASS",
+        "confidence": "HIGH",
+        "reason": "Evidence found: 'ISO 9001:2015'"
+      }
+    ],
+    "final_evaluation": [
+      {
+        "criterion_id": "C001",
+        "required_value": "5 crore",
+        "extracted_value": "\u20b96.5 crore",
+        "verdict": "PASS",
+        "confidence": "HIGH",
+        "reason": "Extracted turnover of \u20b96.5 crore exceeds the required \u20b95 crore threshold",
+        "source": {
+          "document": "bidder_document",
+          "page": 2,
+          "raw_snippet": "The total annual turnover for FY 2023-24 is \u20b96.5 crore as per audited financial statements.",
+          "source_type": null
+        }
+      },
+      {
+        "criterion_id": "C002",
+        "required_value": null,
+        "extracted_value": "29ABCDE1234F1Z5",
+        "verdict": "PASS",
+        "confidence": "HIGH",
+        "reason": "Valid GSTIN evidence found",
+        "source": {
+          "document": "bidder_document",
+          "page": 2,
+          "raw_snippet": "GSTIN: 29ABCDE1234F1Z5",
+          "source_type": null
+        }
+      },
+      {
+        "criterion_id": "C003",
+        "required_value": "3",
+        "extracted_value": "3",
+        "verdict": "PASS",
+        "confidence": "HIGH",
+        "reason": "Bidder has completed 3 similar projects, meeting the requirement",
+        "source": {
+          "document": "bidder_document",
+          "page": 2,
+          "raw_snippet": "Completed Projects:\n1. Solar Installation - Karnataka Govt Buildings (2022)\n2. Solar Installation - Maharashtra Schools (2021)\n3. Solar Installation - Gujarat Hospitals (2020)",
+          "source_type": null
+        }
+      },
+      {
+        "criterion_id": "C004",
+        "required_value": null,
+        "extracted_value": "Attached",
+        "verdict": "PASS",
+        "confidence": "HIGH",
+        "reason": "Audited financial statements for the required period have been provided",
+        "source": {
+          "document": "bidder_document",
+          "page": 2,
+          "raw_snippet": "Audited financial statements for FY 2022-23 and 2023-24 are attached.",
+          "source_type": null
+        }
+      },
+      {
+        "criterion_id": "C005",
+        "required_value": null,
+        "extracted_value": "ISO 9001:2015",
+        "verdict": "PASS",
+        "confidence": "HIGH",
+        "reason": "Bidder has provided evidence of ISO 9001:2015 certification",
+        "source": {
+          "document": "bidder_document",
+          "page": 2,
+          "raw_snippet": "ISO 9001:2015 Certified Company.",
+          "source_type": null
+        }
+      }
+    ],
+    "field_mappings": [],
+    "verification": [
+      {
+        "identifier": "29ABCDE1234F1Z5",
+        "identifier_type": "GSTIN",
+        "status": "INVALID_FORMAT",
+        "confidence": "HIGH",
+        "details": "Embedded PAN is invalid: PAN does not match expected pattern (3 alpha + entity type + alpha + 4 digits + alpha)",
+        "source_criterion": "C002"
+      }
+    ],
+    "pii_masking": {
+      "enabled": true,
+      "mappings": [
+        {
+          "token": "ID_GSTIN_1",
+          "original": "29ABCDE1234F1Z5",
+          "type": "gstin"
+        },
+        {
+          "token": "ORG_1",
+          "original": "ABC SOLAR PRIVATE LIMITED",
+          "type": "organization"
+        },
+        {
+          "token": "ORG_2",
+          "original": "ABC Solar Pvt Ltd",
+          "type": "organization"
+        }
+      ],
+      "masked_fields_count": 3
+    },
+    "issues": [
+      {
+        "criterion_id": "C001",
+        "issue_type": "LOW_CONFIDENCE",
+        "reason": "Extracted value is suspiciously similar to required value",
+        "severity": "MEDIUM",
+        "description": "Annual Turnover extracted value (\u20b96.5 crore) is very close to the required value (\u20b95 crore), indicating possible copy-paste",
+        "affected_bidders": [
+          "bidder_document"
+        ],
+        "confidence": "MEDIUM"
+      }
+    ],
+    "pipeline_steps": [
+      {
+        "step": 0,
+        "name": "PII Masking",
+        "description": "Mask sensitive identifiers before LLM processing",
+        "status": "success",
+        "duration_seconds": 0,
+        "output_count": 3
+      },
+      {
+        "step": 1,
+        "name": "Tender Analyzer",
+        "description": "Extract eligibility criteria from tender document",
+        "status": "success",
+        "duration_seconds": 14.72,
+        "output_count": 5
+      },
+      {
+        "step": 2,
+        "name": "Bidder Parser",
+        "description": "Extract evidence from bidder document with field mapping",
+        "status": "success",
+        "duration_seconds": 12.23,
+        "output_count": 5
+      },
+      {
+        "step": 3,
+        "name": "Field Mapping",
+        "description": "Semantic matching for unmatched criteria",
+        "status": "skipped",
+        "duration_seconds": 0,
+        "output_count": 0,
+        "unmatched_count": 0
+      },
+      {
+        "step": 4,
+        "name": "Final Evaluation",
+        "description": "LLM-based verdict with confidence and reasoning",
+        "status": "success",
+        "duration_seconds": 14.96,
+        "output_count": 5
+      },
+      {
+        "step": 5,
+        "name": "Verification",
+        "description": "GSTIN/PAN format validation and metadata extraction",
+        "status": "success",
+        "duration_seconds": 0,
+        "output_count": 1
+      },
+      {
+        "step": 6,
+        "name": "Vigilance Detection",
+        "description": "Error, anomaly, and suspicious pattern detection",
+        "status": "success",
+        "duration_seconds": 11.02,
+        "output_count": 1
+      }
+    ]
+  },
+  "integrity": {
+    "algorithm": "SHA-256",
+    "hash": "c5eb224c4ba89e8808d82dc6bbd191c186377d8b9287ec13a4b30e4cf30dbc26",
+    "tamper_proof": true,
+    "generated_at": "2026-04-28T09:57:02.850968",
+    "disclaimer": "This audit log is machine-generated. Verify hash for tamper detection."
+  }
+}
