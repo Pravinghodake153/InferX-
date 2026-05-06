@@ -4,7 +4,7 @@ This document outlines the detailed architecture, data flow, and pipeline engine
 
 ---
 
-## 🏗️ 1. High-Level System Architecture
+##  1. High-Level System Architecture
 
 The InferX platform is built on a decoupled, microservices-inspired architecture prioritizing speed, null-safety, and auditability.
 
@@ -14,7 +14,7 @@ The InferX platform is built on a decoupled, microservices-inspired architecture
 
 ---
 
-## 🔄 2. The 7-Stage Pipeline Flow
+## 2. The 7-Stage Pipeline Flow
 
 The core of InferX is the 7-stage deterministic pipeline. Unlike standard chatbots, this pipeline strictly enforces progression gates to maintain an auditable state.
 
@@ -53,7 +53,7 @@ The UI displays the evaluation. Bidders with `REVIEW_REQUIRED` tags are highligh
 
 ---
 
-## ⚡ 3. Complexity Handling & Engineering Workarounds
+## 3. Complexity Handling & Engineering Workarounds
 
 ### The DeepSeek-R1 "Thinking" Timeout Fix
 **Problem:** DeepSeek-R1 is a reasoning model that outputs thousands of `<think>` tokens before generating the actual JSON response. This caused the OpenRouter API to hit its default `max_tokens` limit (4,096), abruptly truncating the JSON and causing the pipeline to crash and retry infinitely.
@@ -67,7 +67,7 @@ The UI displays the evaluation. Bidders with `REVIEW_REQUIRED` tags are highligh
 
 ---
 
-## 📈 4. Test Reports & Performance Metrics
+## 4. Test Reports & Performance Metrics
 
 ### Estimated Time Efficiency
 *   **Human Baseline:** 20-40 hours per tender (cross-checking 10+ bidders against 20 criteria).
