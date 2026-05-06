@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useApp } from '../context/useApp';
 import { MASK_TYPES, createMaskToken, renderMaskedText, autoDetectMasks } from './reviewUtils';
+import { Edit3, Image, BarChart2, Lock, Eye, Unlock, FileText, Play, Search, ClipboardList, Link as LinkIcon, Shield, Edit2, Settings, Sparkles, AlertTriangle, CheckCircle, Save } from 'lucide-react';
 
 export default function ReviewCorrection() {
   const { selectedProject, updateProject, selectedProjectId } = useApp();
@@ -64,9 +65,11 @@ export default function ReviewCorrection() {
   }, [isSandbox, activeViewType, activeTender, activeBidderDoc]);
 
   const fileUrl = useMemo(() => {
+    const activeDoc = activeViewType === 'tender' ? activeTender : activeBidderDoc;
+    if (activeDoc && activeDoc.url && activeDoc.url.startsWith('http')) return activeDoc.url;
     if (activeFileObj) { try { return URL.createObjectURL(activeFileObj); } catch { return null; } }
     return null;
-  }, [activeFileObj]);
+  }, [activeFileObj, activeViewType, activeTender, activeBidderDoc]);
 
   // Resolve extracted data for current document
   const extractedData = useMemo(() => {
@@ -156,8 +159,6 @@ export default function ReviewCorrection() {
     let fullText = '';
     if (viewMode === 'text') {
       fullText = textBlocks.join('\n');
-    } else if (viewMode === 'table') {
-      fullText = allTables.map(t => t.text || '').join('\n');
     } else if (viewMode === 'image') {
       fullText = pages.map(p => p.ocr_text || p.text || '').join('\n');
     }
@@ -266,15 +267,15 @@ export default function ReviewCorrection() {
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           {/* View mode tabs */}
           <div className="review-view-tabs">
-            {['text', 'image', 'table'].map(m => (
+            {['text', 'image'].map(m => (
               <button key={m} className={`review-view-tab ${viewMode === m ? 'active' : ''}`} onClick={() => setViewMode(m)}>
-                {m === 'text' ? '📝 Text' : m === 'image' ? '🖼️ Images' : '📊 Tables'}
+                {m === 'text' ? <><Edit3 size={14} className="inline-icon"/> Text</> : <><Image size={14} className="inline-icon"/> Images</>}
               </button>
             ))}
           </div>
           {/* Mask toggle */}
           <button className={`mask-toggle ${maskEnabled ? 'on' : 'off'}`} onClick={handleMaskToggle}>
-            {maskEnabled ? '🔒 Mask ON' : '👁️ Mask OFF'}
+            {maskEnabled ? <><Lock size={14} className="inline-icon"/> Mask ON</> : <><Eye size={14} className="inline-icon"/> Mask OFF</>}
           </button>
         </div>
       </div>
@@ -312,7 +313,7 @@ export default function ReviewCorrection() {
       {officerPrompt && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div className="card" style={{ padding: 24, maxWidth: 360, width: '90%' }}>
-            <h3 style={{ marginBottom: 12 }}>🔓 Unmask PII — Officer Confirmation</h3>
+            <h3 style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: '8px' }}><Unlock size={20} /> Unmask PII — Officer Confirmation</h3>
             <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: 12 }}>Enter your Officer ID to reveal masked data. This action is audit-logged.</p>
             <input className="input" placeholder="Officer ID (e.g. OFF-001)" value={officerInput} onChange={e => setOfficerInput(e.target.value)} autoFocus />
             <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
@@ -330,7 +331,7 @@ export default function ReviewCorrection() {
         {showOriginal && (
         <div className="card" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <div className="card-header" style={{ background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-color)', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 style={{ fontSize: '0.85rem', margin: 0 }}>📄 Original</h3>
+            <h3 style={{ fontSize: '0.85rem', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}><FileText size={16} /> Original</h3>
             <div style={{ display: 'flex', gap: 8 }}>
               {fileUrl && <button className="btn btn-sm btn-secondary" onClick={handleFullscreen} title="Open in new tab">⛶</button>}
               <button className="btn btn-sm btn-secondary" onClick={() => setShowOriginal(false)} title="Hide Panel">◀</button>
@@ -370,11 +371,11 @@ export default function ReviewCorrection() {
           <div className="card-header" style={{ background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-color)', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               {!showOriginal && (
-                <button className="btn btn-sm btn-primary" onClick={() => setShowOriginal(true)} style={{ padding: '4px 8px', fontSize: '0.7rem' }}>
-                  ▶ Show Original
+                <button className="btn btn-sm btn-primary" onClick={() => setShowOriginal(true)} style={{ padding: '4px 8px', fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <Play size={12} className="inline-icon"/> Show Original
                 </button>
               )}
-              <h3 style={{ fontSize: '0.85rem', margin: 0 }}>{viewMode === 'text' ? '📊 Extracted Text' : viewMode === 'image' ? '🔍 Image OCR Text' : '📋 Extracted Tables'}</h3>
+              <h3 style={{ fontSize: '0.85rem', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>{viewMode === 'text' ? <><BarChart2 size={16} /> Extracted Text</> : <><Search size={16} /> Image OCR Text</>}</h3>
             </div>
           </div>
           <div style={{ flex: 1, padding: 14, overflowY: 'auto', background: '#fff' }} onMouseUp={handleMouseUp}>
@@ -389,7 +390,7 @@ export default function ReviewCorrection() {
                   const linked = links[idx];
                   return (
                     <div key={idx} data-block-idx={idx} className={`ext-block ${selectedBlockIdx === idx ? 'selected' : ''}`} onClick={() => handleSelectBlock(idx)}>
-                      {linked && <span style={{ fontSize: '0.6rem', background: '#fef3c7', color: '#b45309', padding: '1px 5px', borderRadius: 3, fontWeight: 600, marginRight: 6 }}>🔗 {linked}</span>}
+                      {linked && <span style={{ fontSize: '0.6rem', background: '#fef3c7', color: '#b45309', padding: '1px 5px', borderRadius: 3, fontWeight: 600, marginRight: 6, display: 'inline-flex', alignItems: 'center', gap: '2px' }}><LinkIcon size={10} className="inline-icon"/> {linked}</span>}
                       {corrections[idx] !== undefined && <span style={{ fontSize: '0.6rem', background: '#dbeafe', color: '#1e40af', padding: '1px 5px', borderRadius: 3, fontWeight: 600, marginRight: 6 }}>EDITED</span>}
                       {renderMasked(display)}
                     </div>
@@ -408,30 +409,13 @@ export default function ReviewCorrection() {
               ) : <div className="empty-state" style={{ border: 'none', marginTop: 40 }}><p>Select an image from the left panel.</p></div>
             )}
 
-            {/* TABLE VIEW */}
-            {viewMode === 'table' && allTables.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                {allTables.map((tbl, i) => (
-                  <div key={i} style={{ border: selectedTableIdx === i ? '2px solid var(--accent)' : '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', overflow: 'hidden', cursor: 'pointer' }} onClick={() => setSelectedTableIdx(i)}>
-                    <div style={{ padding: '8px 12px', background: 'var(--bg-secondary)', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Table — Page {tbl.pageNum || tbl.page} #{tbl.index}</div>
-                    {tbl.rows && tbl.rows.length > 0 ? (
-                      <table className="ext-table">
-                        <thead><tr>{tbl.rows[0].map((cell, ci) => <th key={ci}>{renderMasked(cell)}</th>)}</tr></thead>
-                        <tbody>{tbl.rows.slice(1).map((row, ri) => <tr key={ri}>{row.map((cell, ci) => <td key={ci}>{renderMasked(cell)}</td>)}</tr>)}</tbody>
-                      </table>
-                    ) : <div className="ext-block" style={{ padding: 12, fontSize: '0.8rem', whiteSpace: 'pre-wrap' }}>{renderMasked(tbl.text || '')}</div>}
-                  </div>
-                ))}
-              </div>
-            )}
-            {viewMode === 'table' && allTables.length === 0 && !noData && <div className="empty-state" style={{ border: 'none', marginTop: 40 }}><p>No tables found in extraction.</p></div>}
 
             {/* SELECTION POPUP */}
             {popup && (
               <div className="selection-popup" style={{ left: popup.x, top: popup.y, transform: 'translate(-50%, -100%)' }}>
-                <button onClick={() => setMaskPicker({ x: popup.x, y: popup.y - 40, text: popup.text })}>🛡️ Mask</button>
-                <button onClick={handleLinkFromPopup}>🔗 Link</button>
-                <button onClick={handleEditFromPopup}>✏️ Edit</button>
+                <button onClick={() => setMaskPicker({ x: popup.x, y: popup.y - 40, text: popup.text })} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Shield size={14} className="inline-icon"/> Mask</button>
+                <button onClick={handleLinkFromPopup} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><LinkIcon size={14} className="inline-icon"/> Link</button>
+                <button onClick={handleEditFromPopup} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Edit2 size={14} className="inline-icon"/> Edit</button>
               </div>
             )}
 
@@ -448,16 +432,16 @@ export default function ReviewCorrection() {
         {/* RIGHT — Action Panel */}
         <div className="card" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <div className="card-header" style={{ background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-color)', padding: '10px 14px' }}>
-            <h3 style={{ fontSize: '0.85rem', margin: 0 }}>⚙️ Actions</h3>
+            <h3 style={{ fontSize: '0.85rem', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}><Settings size={16} /> Actions</h3>
           </div>
           <div style={{ flex: 1, padding: 14, overflowY: 'auto', background: '#fff' }}>
 
             <button className="btn btn-secondary" style={{ width: '100%', marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '10px 0', border: '1px dashed var(--accent)', color: 'var(--accent)', background: 'var(--accent-light)' }} onClick={handleAutoMask}>
-              ✨ Auto-Detect PII
+              <Sparkles size={16} /> Auto-Detect PII
             </button>
             <div style={{ padding: '8px 10px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 4, marginBottom: 16 }}>
               <p style={{ margin: 0, fontSize: '0.7rem', color: '#92400e', display: 'flex', gap: 6 }}>
-                <span>⚠️</span>
+                <span><AlertTriangle size={16} className="text-warning" /></span>
                 <span><strong>Disclaimer:</strong> Only personal information (PII) should be masked. If you mask other data (like financial numbers or dates), the AI cannot see the data and will be forced to return a <strong>REVIEW REQUIRED</strong> verdict.</span>
               </p>
             </div>
@@ -465,7 +449,7 @@ export default function ReviewCorrection() {
             {/* Mask summary */}
             {Object.keys(manualMasks).length > 0 && (
               <div style={{ marginBottom: 14, padding: 10, background: 'var(--pii-bg)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(124,58,237,0.15)' }}>
-                <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--pii-token)', marginBottom: 6 }}>🛡️ Active Masks ({Object.keys(manualMasks).length})</div>
+                <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--pii-token)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: '4px' }}><Shield size={14} className="inline-icon" /> Active Masks ({Object.keys(manualMasks).length})</div>
                 {Object.entries(manualMasks).map(([orig, info]) => (
                   <div 
                     key={orig} 
@@ -492,10 +476,10 @@ export default function ReviewCorrection() {
                     <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: 6, padding: 6, background: '#f8fafc', borderRadius: 4 }}><strong>Original:</strong> {textBlocks[selectedBlockIdx]?.slice(0, 120)}</div>
                   )}
                 </div>
-                <button className="btn btn-primary" onClick={handleSaveCorrection} style={{ width: '100%' }}>{saveStatus === 'success' ? '✅ Saved' : '💾 Save'}</button>
+                <button className="btn btn-primary" onClick={handleSaveCorrection} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>{saveStatus === 'success' ? <><CheckCircle size={16} className="inline-icon"/> Saved</> : <><Save size={16} className="inline-icon"/> Save</>}</button>
                 <hr style={{ border: 0, borderTop: '1px solid var(--border-color)' }} />
                 <div className="form-group">
-                  <label>🔗 Link to Criterion</label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><LinkIcon size={16} /> Link to Criterion</label>
                   <select className="input" value={links[selectedBlockIdx] || ''} onChange={e => handleLinkCriterion(e.target.value)}>
                     <option value="">-- No link --</option>
                     {criteria.map(c => <option key={c.criterion_id} value={c.criterion_id}>{c.criterion_id}: {c.name}</option>)}

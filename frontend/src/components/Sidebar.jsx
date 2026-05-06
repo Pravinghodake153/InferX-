@@ -1,17 +1,19 @@
 import { NavLink } from 'react-router-dom';
 import { useApp } from '../context/useApp';
+import { BarChart2, Upload, ClipboardList, Search, Scale, Settings, PieChart } from 'lucide-react';
+
 
 export default function Sidebar() {
   const { sidebarCollapsed, selectedProject } = useApp();
 
   const navItems = [
-    { path: '/', label: 'Dashboard', icon: '📊', enabled: true },
-    { path: '/upload', label: 'Upload', icon: '📤', enabled: true },
-    { path: '/tender', label: 'Tender Setup', icon: '📋', enabled: true },
-    { path: '/review', label: 'Review & Correct', icon: '🔍', enabled: true },
-    { path: '/evaluation', label: 'Evaluation', icon: '⚖️', enabled: true },
-    { path: '/consolidated', label: 'Consolidated', icon: '📊', enabled: true },
-    { path: '/settings', label: 'Settings', icon: '⚙️', enabled: true },
+    { path: '/', label: 'Dashboard', icon: <BarChart2 size={18} />, enabled: true },
+    { path: '/upload', label: 'Upload', icon: <Upload size={18} />, enabled: true },
+    { path: '/tender', label: 'Tender Setup', icon: <ClipboardList size={18} />, enabled: true },
+    { path: '/review', label: 'Review & Correct', icon: <Search size={18} />, enabled: true },
+    { path: '/evaluation', label: 'Evaluation', icon: <Scale size={18} />, enabled: true },
+    { path: '/consolidated', label: 'Consolidated', icon: <PieChart size={18} />, enabled: true },
+    { path: '/settings', label: 'Settings', icon: <Settings size={18} />, enabled: true },
   ];
 
   return (

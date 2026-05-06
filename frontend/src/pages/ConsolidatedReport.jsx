@@ -59,33 +59,67 @@ export default function ConsolidatedReport() {
 
       // Get officer-approved criteria (decoupled architecture)
       const approvedCriteria = selectedProject.extractedCriteria || [];
-      const payload = {
-        tender_text: tenderText,
-        bidders: bidderPayloads,
-      };
-      if (approvedCriteria.length > 0) {
-        payload.criteria = approvedCriteria;
-        setProgress(`⚡ Evaluating ${bidderPayloads.length} bidders using ${approvedCriteria.length} pre-approved criteria...`);
-      } else {
-        setProgress(`Evaluating ${bidderPayloads.length} bidders against tender (extracting criteria from scratch)...`);
+      
+      let currentReport = report || null;
+      let existingBidderIds = currentReport ? currentReport.bidder_results.map(r => r.bidder_id) : [];
+      
+      // If user clicked re-run, report is null, so existingBidderIds is empty
+      let biddersToProcess = bidderPayloads.filter(b => !existingBidderIds.includes(b.bidder_id));
+
+      if (biddersToProcess.length === 0) {
+        setProgress('All bidders are already evaluated.');
+        setLoading(false);
+        return;
       }
 
-      const res = await fetch(`${API}/api/evaluate/consolidated`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-        signal: controller.signal,
-      });
+      // Process step-wise (1 bidder at a time) to avoid 15000 max token limits
+      for (let i = 0; i < biddersToProcess.length; i++) {
+        if (controller.signal.aborted) break;
+        const b = biddersToProcess[i];
+        setProgress(`⚡ Evaluating bidder ${i + 1} of ${biddersToProcess.length}: ${b.bidder_name}...`);
 
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.detail || `Server error: ${res.status}`);
+        const payload = {
+          tender_text: tenderText,
+          bidders: [b],
+          criteria: approvedCriteria.length > 0 ? approvedCriteria : (currentReport ? currentReport.criteria : null)
+        };
+
+        const res = await fetch(`${API}/api/evaluate/consolidated`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          signal: controller.signal,
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.detail || `Server error on bidder ${b.bidder_name}: ${res.status}`);
+        }
+        
+        const data = await res.json();
+        
+        // Merge results incrementally
+        if (!currentReport) {
+          currentReport = data;
+        } else {
+          currentReport = {
+             ...currentReport,
+             bidder_results: [...currentReport.bidder_results, ...(data.bidder_results || [])],
+             bidder_count: currentReport.bidder_count + (data.bidder_count || 0),
+             summary: {
+                eligible: currentReport.summary.eligible + data.summary.eligible,
+                not_eligible: currentReport.summary.not_eligible + data.summary.not_eligible,
+                review_required: currentReport.summary.review_required + data.summary.review_required,
+             }
+          };
+        }
+        
+        setReport({ ...currentReport }); // force re-render
+        if (selectedProject) {
+          updateProject(selectedProject.id, { consolidatedReport: currentReport });
+        }
       }
-      const data = await res.json();
-      setReport(data);
-      if (selectedProject) {
-        updateProject(selectedProject.id, { consolidatedReport: data });
-      }
+
       setProgress('');
     } catch (err) {
       if (err.name === 'AbortError') {
@@ -142,8 +176,8 @@ export default function ConsolidatedReport() {
         </p>
       </div>
 
-      {/* Run Button */}
-      {!report && (
+      {/* Run Button OR Incremental Button */}
+      {(!report || (report.bidder_results?.length < bidders.length)) && (
         <div className="card" style={{ marginBottom: 24 }}>
           <div className="card-header"><h3>📊 Run Consolidated Evaluation</h3></div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
@@ -168,7 +202,7 @@ export default function ConsolidatedReport() {
               disabled={!canRun || loading}
               style={{ padding: '12px 32px', fontSize: '1rem', flex: 1 }}
             >
-              {loading ? '⚡ Running Consolidated Evaluation...' : `⚡ Evaluate All ${bidders.length} Bidders`}
+              {loading ? '⚡ Running Evaluation Step-Wise...' : (!report ? `⚡ Evaluate All ${bidders.length} Bidders` : `⚡ Evaluate ${bidders.length - report.bidder_results.length} New Bidder(s)`)}
             </button>
 
             {loading && (
@@ -358,30 +392,51 @@ export default function ConsolidatedReport() {
           </div>
 
           {/* Action Buttons */}
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 24 }}>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 24, flexWrap: 'wrap' }}>
             <button
               className="btn btn-primary"
               onClick={async () => {
                 try {
                   const res = await fetch(`${API}/api/export/consolidated`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(report),
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(report),
                   });
                   if (!res.ok) throw new Error('Export failed');
-                  const blob = await res.blob();
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = 'InferX_Consolidated_Report.pdf';
-                  a.click();
-                  URL.revokeObjectURL(url);
-                } catch (err) {
-                  alert('Export failed: ' + err.message);
-                }
+                  const blob = await res.blob(); const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a'); a.href = url; a.download = 'InferX_Consolidated_Report.pdf'; a.click(); URL.revokeObjectURL(url);
+                } catch (err) { alert('Export failed: ' + err.message); }
               }}
             >
               📄 Export Consolidated PDF
+            </button>
+            <button
+              className="btn btn-outline"
+              onClick={async () => {
+                try {
+                  const res = await fetch(`${API}/api/export/excel`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(report),
+                  });
+                  if (!res.ok) throw new Error('Export failed');
+                  const blob = await res.blob(); const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a'); a.href = url; a.download = `InferX_Matrix_${report.summary?.evaluated_at || Date.now()}.xlsx`; a.click(); URL.revokeObjectURL(url);
+                } catch (err) { alert('Export failed: ' + err.message); }
+              }}
+            >
+              📊 Export Matrix (XLSX)
+            </button>
+            <button
+              className="btn btn-outline"
+              onClick={async () => {
+                try {
+                  const res = await fetch(`${API}/api/export/audit`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(report),
+                  });
+                  if (!res.ok) throw new Error('Export failed');
+                  const blob = await res.blob(); const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a'); a.href = url; a.download = `InferX_AuditLog_${report.summary?.evaluated_at || Date.now()}.json`; a.click(); URL.revokeObjectURL(url);
+                } catch (err) { alert('Export failed: ' + err.message); }
+              }}
+            >
+              🔐 Export Audit Log (JSON)
             </button>
             <button className="btn btn-secondary" onClick={() => { setReport(null); setSelectedBidder(null); }}>
               🔄 Re-run Evaluation

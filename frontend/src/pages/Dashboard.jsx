@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { SandboxAPI } from '../services/api';
 import { useApp } from '../context/useApp';
 import DataTable from '../components/DataTable';
+import { Edit3, Upload, CheckCircle, Search, ClipboardList, FolderKanban, Trash2 } from 'lucide-react';
+import { auth } from '../services/firebase';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -15,6 +18,13 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [showNewProject, setShowNewProject] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
+  
+  // Auth Modal State
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [authError, setAuthError] = useState('');
+  const [projectToDelete, setProjectToDelete] = useState(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -45,12 +55,36 @@ export default function Dashboard() {
     else navigate('/upload');
   };
 
+  const handleRequestDelete = (p) => {
+    setProjectToDelete(p);
+    setAuthEmail('');
+    setAuthPassword('');
+    setAuthError('');
+    setShowAuthModal(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!authEmail || !authPassword) {
+      setAuthError('Email and password are required.');
+      return;
+    }
+    setAuthError('');
+    try {
+      await signInWithEmailAndPassword(auth, authEmail, authPassword);
+      deleteProject(projectToDelete.id);
+      setShowAuthModal(false);
+      setProjectToDelete(null);
+    } catch (err) {
+      setAuthError('Authentication failed: ' + err.message);
+    }
+  };
+
   const statusBadge = (status) => {
     const map = {
-      draft: { cls: 'review', label: '📝 Draft' },
-      uploaded: { cls: 'mock', label: '📤 Uploaded' },
-      evaluated: { cls: 'live', label: '✅ Evaluated' },
-      reviewed: { cls: 'live', label: '🔍 Reviewed' },
+      draft: { cls: 'review', label: <><Edit3 size={14} className="inline-icon" /> Draft</> },
+      uploaded: { cls: 'mock', label: <><Upload size={14} className="inline-icon" /> Uploaded</> },
+      evaluated: { cls: 'live', label: <><CheckCircle size={14} className="inline-icon" /> Evaluated</> },
+      reviewed: { cls: 'live', label: <><Search size={14} className="inline-icon" /> Reviewed</> },
     };
     const s = map[status] || map.draft;
     return <span className={`header-badge ${s.cls}`}>{s.label}</span>;
@@ -93,7 +127,9 @@ export default function Dashboard() {
       {/* New Project Dialog */}
       {showNewProject && (
         <div className="card" style={{ marginBottom: 24, border: '2px solid var(--accent)' }}>
-          <h3 style={{ marginBottom: 12 }}>📋 Create New Tender Project</h3>
+          <h3 style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <ClipboardList size={20} /> Create New Tender Project
+          </h3>
           <div style={{ display: 'flex', gap: 8 }}>
             <input
               className="form-input"
@@ -111,6 +147,44 @@ export default function Dashboard() {
               Cancel
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Auth Modal for Deletion */}
+      {showAuthModal && (
+        <div className="card" style={{ marginBottom: 24, border: '2px solid var(--fail)', background: '#fff1f2' }}>
+          <h3 style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--fail)' }}>
+            <Trash2 size={20} /> Authorize Deletion
+          </h3>
+          <p style={{ marginBottom: 12 }}>
+            Please authenticate to delete project: <strong>{projectToDelete?.name}</strong>
+          </p>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <input
+              className="form-input"
+              type="email"
+              placeholder="Firebase Email"
+              value={authEmail}
+              onChange={(e) => setAuthEmail(e.target.value)}
+              style={{ flex: 1, minWidth: '200px' }}
+            />
+            <input
+              className="form-input"
+              type="password"
+              placeholder="Firebase Password"
+              value={authPassword}
+              onChange={(e) => setAuthPassword(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && confirmDelete()}
+              style={{ flex: 1, minWidth: '200px' }}
+            />
+            <button className="btn btn-primary" style={{ background: 'var(--fail)', borderColor: 'var(--fail)' }} onClick={confirmDelete}>
+              Confirm Delete
+            </button>
+            <button className="btn btn-secondary" onClick={() => { setShowAuthModal(false); setProjectToDelete(null); }}>
+              Cancel
+            </button>
+          </div>
+          {authError && <div style={{ color: 'var(--fail)', marginTop: 8, fontSize: '0.85rem' }}>❌ {authError}</div>}
         </div>
       )}
 
@@ -138,7 +212,9 @@ export default function Dashboard() {
       {projects.length > 0 && (
         <div className="card" style={{ marginBottom: 24 }}>
           <div className="card-header">
-            <h3>🗂️ My Tender Projects</h3>
+            <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <FolderKanban size={20} /> My Tender Projects
+            </h3>
             <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
               1 Tender = 1 Project
             </span>
@@ -169,8 +245,8 @@ export default function Dashboard() {
                       <button className="btn btn-sm btn-primary" onClick={() => handleOpenProject(p)}>
                         Open
                       </button>
-                      <button className="btn btn-sm btn-secondary" onClick={(e) => { e.preventDefault(); e.stopPropagation(); if(window.confirm('Delete this project?')) deleteProject(p.id); }}>
-                        🗑
+                      <button className="btn btn-sm btn-secondary" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleRequestDelete(p); }}>
+                        <Trash2 size={16} />
                       </button>
                     </div>
                   </td>
@@ -184,7 +260,9 @@ export default function Dashboard() {
       {/* Sandbox Tenders */}
       <div className="card" style={{ marginBottom: 24 }}>
         <div className="card-header">
-          <h3>📋 Sandbox Tenders</h3>
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <ClipboardList size={20} /> Sandbox Tenders
+          </h3>
           <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
             UBID-based sandbox data
           </span>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { SettingsAPI, AuditAPI } from '../services/api';
 import { useApp } from '../context/useApp';
+import { Bot, Globe, Sparkles, CheckCircle, Save, Link, AlertOctagon, ClipboardList, XCircle } from 'lucide-react';
 
 const OPENROUTER_MODELS = [
   { id: 'anthropic/claude-3-haiku', label: 'Claude 3 Haiku (Fast)' },
@@ -72,7 +73,7 @@ export default function Settings() {
       {/* AI Provider */}
       <div className="card" style={{ marginBottom: 24 }}>
         <div className="card-header">
-          <h3>🤖 AI Provider Setup</h3>
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Bot size={20} /> AI Provider Setup</h3>
         </div>
 
         <div style={{ display: 'flex', gap: '16px', marginBottom: '20px' }}>
@@ -85,7 +86,7 @@ export default function Settings() {
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-              <span style={{ fontSize: '1.2rem' }}>🌐</span>
+              <Globe size={24} className="text-primary" />
               <strong style={{ fontSize: '1rem' }}>OpenRouter</strong>
             </div>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
@@ -102,7 +103,7 @@ export default function Settings() {
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-              <span style={{ fontSize: '1.2rem' }}>✨</span>
+              <Sparkles size={24} className="text-primary" />
               <strong style={{ fontSize: '1rem' }}>Google Gemini API</strong>
             </div>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
@@ -123,19 +124,19 @@ export default function Settings() {
           </p>
         </div>
 
-        <button className="btn btn-primary" onClick={handleSave}>
-          {saved ? '✅ Saved' : '💾 Save Settings'}
+        <button className="btn btn-primary" onClick={handleSave} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {saved ? <><CheckCircle size={16} /> Saved</> : <><Save size={16} /> Save Settings</>}
         </button>
       </div>
 
       {/* Audit Chain Status */}
       <div className="card" style={{ marginBottom: 24 }}>
-        <div className="card-header"><h3>🔗 Audit Chain Integrity</h3></div>
+        <div className="card-header"><h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Link size={20} /> Audit Chain Integrity</h3></div>
         {chainStatus ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <span className={`status-dot ${chainStatus.valid ? 'online' : 'offline'}`}></span>
-            <span style={{ fontWeight: 600 }}>
-              {chainStatus.valid ? '✅ Chain Intact' : '❌ Chain Broken'}
+            <span style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+              {chainStatus.valid ? <><CheckCircle size={16} className="text-pass" /> Chain Intact</> : <><XCircle size={16} className="text-fail" /> Chain Broken</>}
             </span>
             <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
               — {chainStatus.message}
@@ -149,7 +150,7 @@ export default function Settings() {
       {/* System Error & Extraction Logs */}
       <div className="card" style={{ marginBottom: 24 }}>
         <div className="card-header">
-          <h3>🚨 System & Extraction Logs</h3>
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><AlertOctagon size={20} /> System & Extraction Logs</h3>
         </div>
         <div style={{ padding: 16 }}>
           {selectedProject?.extractionError ? (
@@ -197,7 +198,7 @@ export default function Settings() {
       {/* Recent Audit Logs */}
       <div className="card">
         <div className="card-header">
-          <h3>📋 Recent Audit Logs</h3>
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><ClipboardList size={20} /> Recent Audit Logs</h3>
           <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Last 10 entries</span>
         </div>
         {auditLogs.length > 0 ? (

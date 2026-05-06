@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/useApp';
+import { AlertTriangle, Upload, FileText, Paperclip, Building2, BarChart2, Bot, Edit3, ClipboardList, Plus, Lock, CheckCircle, Edit2 } from 'lucide-react';
 
 /**
  * TenderSetup — Extracted criteria review and lock.
@@ -84,11 +85,11 @@ export default function TenderSetup() {
         </div>
         <div className="card" style={{ marginBottom: 24 }}>
           <div className="empty-state" style={{ padding: 40 }}>
-            <div className="icon">⚠️</div>
+            <div className="icon"><AlertTriangle size={48} className="text-muted" /></div>
             <h3 style={{ marginBottom: 8 }}>Extraction Required</h3>
             <p>Documents must be uploaded and extraction pipeline must complete before criteria appear here.</p>
-            <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={() => navigate('/upload')}>
-              📤 Go to Upload & Extract
+            <button className="btn btn-primary" style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: '8px' }} onClick={() => navigate('/upload')}>
+              <Upload size={16} /> Go to Upload & Extract
             </button>
           </div>
         </div>
@@ -116,7 +117,7 @@ export default function TenderSetup() {
       {/* Extraction Summary — Show ALL tender document extracted text */}
       <div className="card" style={{ marginBottom: 24 }}>
         <div className="card-header">
-          <h3>📄 Extracted Tender Content</h3>
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><FileText size={20} /> Extracted Tender Content</h3>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
               {Object.keys(selectedProject.extractedContent?.tender_documents || {}).length} document(s)
@@ -137,9 +138,9 @@ export default function TenderSetup() {
                 <div style={{
                   padding: '6px 12px', background: 'var(--accent-light)',
                   borderRadius: 'var(--radius-sm)', fontWeight: 600, fontSize: '0.8rem',
-                  color: 'var(--accent)', marginBottom: 4,
+                  color: 'var(--accent)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: '6px'
                 }}>
-                  📎 {docName}
+                  <Paperclip size={14} /> {docName}
                 </div>
                 <div style={{
                   fontFamily: 'monospace', fontSize: '0.78rem',
@@ -170,7 +171,7 @@ export default function TenderSetup() {
       {selectedProject.extractedBidderData?.length > 0 && (
         <div className="card" style={{ marginBottom: 24 }}>
           <div className="card-header">
-            <h3>🏢 Extracted Bidder Data</h3>
+            <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Building2 size={20} /> Extracted Bidder Data</h3>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                 {selectedProject.extractedBidderData.length} bidder{selectedProject.extractedBidderData.length > 1 ? 's' : ''}
@@ -223,7 +224,7 @@ export default function TenderSetup() {
       {selectedProject.criteriaExtractionLogs?.length > 0 && (
         <div className="card" style={{ marginBottom: 24 }}>
           <div className="card-header">
-            <h3>📊 Criteria Extraction Log</h3>
+            <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><BarChart2 size={20} /> Criteria Extraction Log</h3>
             <span style={{
               fontSize: '0.75rem', fontWeight: 700,
               padding: '3px 10px', borderRadius: 4,
@@ -231,9 +232,10 @@ export default function TenderSetup() {
                           selectedProject.criteriaExtractionMethod === 'regex' ? 'var(--review-bg)' : 'var(--bg-secondary)',
               color: selectedProject.criteriaExtractionMethod === 'llm' ? 'var(--pass)' :
                      selectedProject.criteriaExtractionMethod === 'regex' ? 'var(--review)' : 'var(--text-muted)',
+               display: 'flex', alignItems: 'center', gap: '4px'
             }}>
-              {selectedProject.criteriaExtractionMethod === 'llm' ? '🤖 AI Extracted' :
-               selectedProject.criteriaExtractionMethod === 'regex' ? '📝 Regex Fallback' : '📋 Pipeline'}
+              {selectedProject.criteriaExtractionMethod === 'llm' ? <><Bot size={12} /> AI Extracted</> :
+               selectedProject.criteriaExtractionMethod === 'regex' ? <><Edit3 size={12} /> Regex Fallback</> : <><ClipboardList size={12} /> Pipeline</>}
             </span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -257,18 +259,18 @@ export default function TenderSetup() {
       {/* Criteria Table */}
       <div className="card" style={{ marginBottom: 24 }}>
         <div className="card-header">
-          <h3>📋 Extracted Criteria ({criteria.length})</h3>
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><ClipboardList size={20} /> Extracted Criteria ({criteria.length})</h3>
           <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
             {!locked && (
-              <button className="btn btn-sm btn-secondary" onClick={handleAddCriterion}>
-                ➕ Add Manual Criteria
+              <button className="btn btn-sm btn-secondary" onClick={handleAddCriterion} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Plus size={14} /> Add Manual Criteria
               </button>
             )}
             {locked ? (
-              <span className="verdict pass" style={{ fontSize: '0.8rem' }}>🔒 Schema Locked</span>
+              <span className="verdict pass" style={{ fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}><Lock size={12} /> Schema Locked</span>
             ) : (
-              <button className="btn btn-sm btn-primary" onClick={handleLockSchema} disabled={criteria.length === 0}>
-                🔒 Lock Schema
+              <button className="btn btn-sm btn-primary" onClick={handleLockSchema} disabled={criteria.length === 0} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Lock size={14} /> Lock Schema
               </button>
             )}
           </div>
@@ -334,11 +336,11 @@ export default function TenderSetup() {
                     )}
                   </td>
                   <td>{c.type || '—'}</td>
-                  <td style={{ textAlign: 'center' }}>{c.mandatory !== false ? '✅' : '—'}</td>
+                  <td style={{ textAlign: 'center' }}>{c.mandatory !== false ? <CheckCircle size={16} className="text-pass mx-auto" /> : '—'}</td>
                   {!locked && (
                     <td>
                       <button className="btn btn-sm btn-secondary" onClick={() => handleStartEdit(c)} title="Edit">
-                        ✏️
+                        <Edit2 size={14} />
                       </button>
                     </td>
                   )}
@@ -348,7 +350,7 @@ export default function TenderSetup() {
           </table>
         ) : (
           <div className="empty-state">
-            <div className="icon">📋</div>
+            <div className="icon"><ClipboardList size={48} className="text-muted" /></div>
             <p>No criteria extracted. Check tender documents.</p>
           </div>
         )}
@@ -360,8 +362,9 @@ export default function TenderSetup() {
           padding: '12px 16px', background: 'var(--review-bg)',
           border: '1px solid #fde68a', borderRadius: 'var(--radius-md)',
           marginBottom: 16, fontSize: '0.85rem', color: 'var(--review)',
+          display: 'flex', alignItems: 'center', gap: '8px'
         }}>
-          ⚠️ Review criteria above. Once locked, the schema cannot be changed. You must lock before proceeding to Review & Correct.
+          <AlertTriangle size={16} /> Review criteria above. Once locked, the schema cannot be changed. You must lock before proceeding to Review & Correct.
         </div>
       )}
 
@@ -370,9 +373,9 @@ export default function TenderSetup() {
         className="btn btn-primary"
         onClick={handleProceedToReview}
         disabled={!locked}
-        style={{ padding: '12px 32px', fontSize: '1rem' }}
+        style={{ padding: '12px 32px', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}
       >
-        {locked ? '📋 Proceed to Review & Correct →' : '🔒 Lock Schema First'}
+        {locked ? <><ClipboardList size={18} /> Proceed to Review & Correct →</> : <><Lock size={18} /> Lock Schema First</>}
       </button>
     </div>
   );

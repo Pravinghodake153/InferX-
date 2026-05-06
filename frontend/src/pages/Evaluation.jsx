@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useApp } from '../context/useApp';
 import VerdictBadge from '../components/VerdictBadge';
 import EvaluationGraphs from '../components/EvaluationGraphs';
+import { AlertTriangle, CheckCircle, Square, Hourglass, XCircle, Zap, Search, Lock, FileText, GitCompare, ClipboardList, BarChart2, User, Bot, AlertOctagon } from 'lucide-react';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -197,7 +198,7 @@ export default function Evaluation() {
         </div>
         <div className="card" style={{ marginBottom: 24 }}>
           <div className="empty-state" style={{ padding: 40 }}>
-            <div className="icon">⚠️</div>
+            <div className="icon"><AlertTriangle size={48} className="text-muted" /></div>
             <h3 style={{ marginBottom: 8 }}>No Project Selected</h3>
             <p>Please select or create a project from the Dashboard first.</p>
           </div>
@@ -218,40 +219,40 @@ export default function Evaluation() {
         </div>
 
         <div className="card" style={{ marginBottom: 24 }}>
-          <div className="card-header"><h3>📋 Evaluation Readiness</h3></div>
+          <div className="card-header"><h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><ClipboardList size={20} /> Evaluation Readiness</h3></div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
-            <div style={{ display: 'flex', gap: 8 }}><span>{tenderReady ? '✅' : '⬜'}</span> Tender documents uploaded</div>
-            <div style={{ display: 'flex', gap: 8 }}><span>{biddersReady ? '✅' : '⬜'}</span> Bidder documents uploaded</div>
-            <div style={{ display: 'flex', gap: 8 }}><span>{reviewDone ? '✅' : '⏳'}</span> Review & Cleaning completed</div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><span>{tenderReady ? <CheckCircle size={16} className="text-pass" /> : <Square size={16} className="text-muted" />}</span> Tender documents uploaded</div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><span>{biddersReady ? <CheckCircle size={16} className="text-pass" /> : <Square size={16} className="text-muted" />}</span> Bidder documents uploaded</div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><span>{reviewDone ? <CheckCircle size={16} className="text-pass" /> : <Hourglass size={16} className="text-warning" />}</span> Review & Cleaning completed</div>
           </div>
 
           {!reviewDone && tenderReady && biddersReady && (
             <div style={{ padding: '10px 14px', background: 'var(--review-bg)', border: '1px solid #fde68a', borderRadius: 'var(--radius-sm)', marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: '0.85rem', color: 'var(--review)' }}>⚠️ Review step not completed. You can skip if needed.</span>
+              <span style={{ fontSize: '0.85rem', color: 'var(--review)', display: 'flex', alignItems: 'center', gap: '6px' }}><AlertTriangle size={14} /> Review step not completed. You can skip if needed.</span>
               <button className="btn btn-sm btn-secondary" onClick={() => setSkipConfirmed(true)}>Skip Review →</button>
             </div>
           )}
         </div>
 
-        {error && <div style={{ padding: '12px 16px', background: 'var(--fail-bg)', color: 'var(--fail)', marginBottom: 16 }}>❌ {error}</div>}
+        {error && <div style={{ padding: '12px 16px', background: 'var(--fail-bg)', color: 'var(--fail)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: '6px' }}><XCircle size={16} /> {error}</div>}
 
         <div style={{ display: 'flex', gap: 12 }}>
           <button
             className="btn btn-primary"
             onClick={handleRunEvaluation}
             disabled={!canEvaluate || loading}
-            style={{ padding: '12px 32px', fontSize: '1rem' }}
+            style={{ padding: '12px 32px', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}
           >
-            {loading ? '⚡ Running Evaluation...' : '⚡ Run Evaluation (Output 1)'}
+            {loading ? <><Hourglass size={16} /> Running Evaluation...</> : <><Zap size={16} /> Run Evaluation (Output 1)</>}
           </button>
           
           <button
             className="btn btn-secondary"
             onClick={handlePreviewPayload}
             disabled={!canEvaluate || loading}
-            style={{ padding: '12px 20px', fontSize: '1rem' }}
+            style={{ padding: '12px 20px', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}
           >
-            🔍 View LLM Payload Preview
+            <Search size={16} /> View LLM Payload Preview
           </button>
         </div>
 
@@ -260,7 +261,7 @@ export default function Evaluation() {
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <div className="card" style={{ width: '90%', maxWidth: 900, maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
               <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h3 style={{ margin: 0 }}>🔍 What the LLM Sees (Audit Payload Preview)</h3>
+                <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}><Search size={20} /> What the LLM Sees (Audit Payload Preview)</h3>
                 <button className="btn btn-sm btn-secondary" onClick={() => setShowPayloadModal(false)}>Close</button>
               </div>
               <div style={{ padding: 16, overflowY: 'auto', background: '#0f172a', color: '#e2e8f0', fontFamily: 'monospace', fontSize: '0.8rem', whiteSpace: 'pre-wrap' }}>
@@ -336,7 +337,7 @@ export default function Evaluation() {
                 style={{ position: 'relative' }}
               >
                 Output {v.version_id}
-                {v.status === 'FINAL' && ' 🔒'}
+                {v.status === 'FINAL' && <Lock size={12} className="inline-icon" style={{ marginLeft: 4 }} />}
               </button>
             ))}
             {!isFinalized && (
@@ -347,23 +348,23 @@ export default function Evaluation() {
                   disabled={loading}
                   style={{ border: '1px dashed var(--border-color)', background: 'transparent' }}
                 >
-                  {loading ? '⏳ Running...' : '+ New Run'}
+                  {loading ? <><Hourglass size={14} className="inline-icon" /> Running...</> : '+ New Run'}
                 </button>
                 <button 
                   className="btn btn-sm btn-secondary" 
                   onClick={handlePreviewPayload}
                   disabled={loading}
-                  style={{ border: '1px dashed var(--border-color)', background: 'transparent' }}
+                  style={{ border: '1px dashed var(--border-color)', background: 'transparent', display: 'flex', alignItems: 'center', gap: '6px' }}
                 >
-                  🔍 View LLM Payload Preview
+                  <Search size={14} /> View LLM Payload Preview
                 </button>
                 <button 
                   className="btn btn-sm btn-secondary" 
                   onClick={() => setShowRawOutputModal(true)}
                   disabled={loading}
-                  style={{ border: '1px dashed var(--border-color)', background: 'transparent' }}
+                  style={{ border: '1px dashed var(--border-color)', background: 'transparent', display: 'flex', alignItems: 'center', gap: '6px' }}
                 >
-                  📄 View Raw AI Output Logs
+                  <FileText size={14} /> View Raw AI Output Logs
                 </button>
               </>
             )}
@@ -375,7 +376,7 @@ export default function Evaluation() {
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <div className="card" style={{ width: '90%', maxWidth: 1000, maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
               <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h3 style={{ margin: 0 }}>📄 Raw AI Output Logs (Audit Trace)</h3>
+                <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}><FileText size={20} /> Raw AI Output Logs (Audit Trace)</h3>
                 <button className="btn btn-sm btn-secondary" onClick={() => setShowRawOutputModal(false)}>Close</button>
               </div>
               <div style={{ padding: 16, overflowY: 'auto', background: '#0f172a', color: '#e2e8f0', fontFamily: 'monospace', fontSize: '0.8rem', whiteSpace: 'pre-wrap' }}>
@@ -400,8 +401,8 @@ export default function Evaluation() {
           </div>
 
           {!isFinalized && activeVersion?.status === 'ACTIVE' && (
-            <button className="btn btn-primary btn-sm" onClick={handleFinalize}>
-              ✅ Mark as Final Output
+            <button className="btn btn-primary btn-sm" onClick={handleFinalize} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <CheckCircle size={14} /> Mark as Final Output
             </button>
           )}
         </div>
@@ -418,7 +419,7 @@ export default function Evaluation() {
                 setCompareWithVersionId(prev ? prev.version_id : null);
               }
             }} />
-            🆚 Compare Versions
+            <GitCompare size={14} /> Compare Versions
           </label>
           
           {compareMode && (
@@ -443,7 +444,7 @@ export default function Evaluation() {
       {/* ── MAIN CONTENT (Criteria Table) ── */}
       {backendError && (
         <div style={{ padding: '16px 20px', background: 'var(--fail-bg)', border: '1px solid var(--fail)', borderRadius: 8, color: 'var(--fail)', marginBottom: 24 }}>
-          <h3 style={{ margin: '0 0 8px 0', fontSize: '1rem', color: '#b91c1c' }}>⚠️ Evaluation Pipeline Error</h3>
+          <h3 style={{ margin: '0 0 8px 0', fontSize: '1rem', color: '#b91c1c', display: 'flex', alignItems: 'center', gap: '8px' }}><AlertOctagon size={16} /> Evaluation Pipeline Error</h3>
           <p style={{ margin: 0, fontSize: '0.9rem' }}>{backendError}</p>
           <p style={{ margin: '8px 0 0 0', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>The system failed to automatically evaluate this bidder. Manual review is required.</p>
         </div>
@@ -452,7 +453,7 @@ export default function Evaluation() {
       {compareMode && compareVersion ? (
         <div className="card">
           <div className="card-header" style={{ background: '#f8fafc' }}>
-            <h3>📊 Comparison View (Output {activeVersion.version_id} vs Output {compareVersion.version_id})</h3>
+            <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><BarChart2 size={20} /> Comparison View (Output {activeVersion.version_id} vs Output {compareVersion.version_id})</h3>
           </div>
           <table className="data-table" style={{ fontSize: '0.85rem' }}>
             <thead>
@@ -475,7 +476,7 @@ export default function Evaluation() {
                 if (changed) {
                   const input1 = JSON.stringify(activeVersion.input_data?.corrections || {});
                   const input2 = JSON.stringify(compareVersion.input_data?.corrections || {});
-                  changeSource = input1 !== input2 ? '🧑‍💻 User Edit' : '🤖 AI Reasoning Change';
+                  changeSource = input1 !== input2 ? <><User size={14} className="inline-icon" /> User Edit</> : <><Bot size={14} className="inline-icon" /> AI Reasoning Change</>;
                 }
 
                 return (
@@ -554,8 +555,8 @@ export default function Evaluation() {
             </div>
 
             {isFinalized && (
-              <div style={{ padding: '12px', background: '#dcfce7', color: '#166534', borderRadius: 'var(--radius-md)', fontSize: '0.85rem', fontWeight: 500 }}>
-                🔒 This evaluation has been finalized and is locked for auditing.
+              <div style={{ padding: '12px', background: '#dcfce7', color: '#166534', borderRadius: 'var(--radius-md)', fontSize: '0.85rem', fontWeight: 500, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                <Lock size={16} /> This evaluation has been finalized and is locked for auditing.
               </div>
             )}
           </div>

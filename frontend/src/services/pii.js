@@ -35,15 +35,3 @@ export function getTokenType(token) {
   return 'Unknown';
 }
 
-/**
- * Get icon for PII token type.
- */
-export function getTokenIcon(token) {
-  if (token.startsWith('ORG_')) return '🏢';
-  if (token.startsWith('ID_GSTIN_')) return '📋';
-  if (token.startsWith('ID_PAN_')) return '🪪';
-  if (token.startsWith('CONTACT_PHONE_')) return '📞';
-  if (token.startsWith('CONTACT_EMAIL_')) return '📧';
-  if (token.startsWith('PERSON_')) return '👤';
-  return '🔒';
-}

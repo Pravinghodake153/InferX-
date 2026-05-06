@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useApp } from '../context/useApp';
+import { Landmark, Lock, Unlock, Moon, Sun, Menu } from 'lucide-react';
 
 export default function Header() {
   const { toggleSidebar, sidebarCollapsed, selectedProject } = useApp();
   const [theme, setTheme] = useState('light');
-  const [piiMode, setPiiMode] = useState('masked');
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -12,7 +12,6 @@ export default function Header() {
   }, [theme]);
 
   const toggleTheme = () => setTheme(t => t === 'light' ? 'dark' : 'light');
-  const togglePII = () => setPiiMode(m => m === 'masked' ? 'original' : 'masked');
 
   return (
     <header className="header">
@@ -22,9 +21,12 @@ export default function Header() {
           onClick={toggleSidebar}
           title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
-          ☰
+          <Menu size={16} />
         </button>
-        <h2>🏛️ InferX Tender Evaluation</h2>
+        <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Landmark size={20} className="inline-icon text-primary" />
+          InferX Tender Evaluation
+        </h2>
         {selectedProject && (
           <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginLeft: 4 }}>
             / {selectedProject.name}
@@ -33,15 +35,8 @@ export default function Header() {
       </div>
       <div className="header-right">
         <span className="header-badge mock">Sandbox (Synthetic Data)</span>
-        <button
-          className="btn btn-sm btn-secondary"
-          onClick={togglePII}
-          title={piiMode === 'masked' ? 'Click to show original values' : 'Click to mask PII'}
-        >
-          {piiMode === 'masked' ? '🔒 Masked' : '🔓 Original'}
-        </button>
         <button className="btn btn-sm btn-secondary" onClick={toggleTheme}>
-          {theme === 'light' ? '🌙' : '☀️'}
+          {theme === 'light' ? <Moon size={14} /> : <Sun size={14} />}
         </button>
         <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
           Officer: OFF-001

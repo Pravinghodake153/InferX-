@@ -180,12 +180,13 @@ export function AppProvider({ children }) {
   const selectedProject = projects.find(p => p.id === selectedProjectId) || null;
 
   // ── Tender Documents (multi-doc) ──
-  const addTenderDocument = useCallback((type, file) => {
+  const addTenderDocument = useCallback((type, file, url = null) => {
     if (!selectedProjectId) return;
     const doc = {
       id: `tdoc-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       type,     // MAIN | ADDENDUM
       file,
+      url,      // Firebase Storage URL
       name: file.name,
       size: file.size,
       addedAt: new Date().toISOString(),
@@ -224,12 +225,13 @@ export function AppProvider({ children }) {
     return bidder.id;
   }, [selectedProjectId]);
 
-  const addBidderDocument = useCallback((bidderId, type, file) => {
+  const addBidderDocument = useCallback((bidderId, type, file, url = null) => {
     if (!selectedProjectId) return;
     const doc = {
       id: `bdoc-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       doc_type: type || 'Other',
       file,
+      url,      // Firebase Storage URL
       name: file.name,
       size: file.size,
       addedAt: new Date().toISOString(),

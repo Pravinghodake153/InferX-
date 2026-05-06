@@ -4,6 +4,9 @@ import { useApp } from '../context/useApp';
 import FileUpload from '../components/FileUpload';
 import SandboxMode from '../components/SandboxMode';
 import { PipelineAPI, TenderAPI } from '../services/api';
+import { storage } from '../services/firebase';
+import { ref, uploadBytesResumable, getDownloadURL, uploadString } from 'firebase/storage';
+import { Upload as UploadIcon, Globe, ClipboardList, Folder, Building2, FileText, CheckCircle, Hourglass, Square, Bot, Edit3, StopCircle, Zap } from 'lucide-react';
 
 const TENDER_DOC_TYPES = ['MAIN', 'ADDENDUM'];
 
@@ -57,16 +60,35 @@ export default function Upload() {
     }
   };
 
-  const handleTenderFile = (file) => {
+  const handleTenderFile = async (file) => {
     if (!file || !activeTenderUpload) return;
     ensureProject();
-    addTenderDocument(activeTenderUpload, file);
+    
+    try {
+      const storageRef = ref(storage, `tenders/${Date.now()}_${file.name}`);
+      const uploadTask = await uploadBytesResumable(storageRef, file);
+      const downloadURL = await getDownloadURL(uploadTask.ref);
+      
+      addTenderDocument(activeTenderUpload, file, downloadURL);
+    } catch (err) {
+      setError(`Failed to upload tender document: ${err.message}`);
+    }
     setActiveTenderUpload(null);
   };
 
-  const handleBidderFile = (file) => {
+  const handleBidderFile = async (file) => {
     if (!file || !activeBidderUpload) return;
-    addBidderDocument(activeBidderUpload.bidderId, bidderDocType, file);
+    
+    try {
+      const storageRef = ref(storage, `bidders/${activeBidderUpload.bidderId}/${Date.now()}_${file.name}`);
+      const uploadTask = await uploadBytesResumable(storageRef, file);
+      const downloadURL = await getDownloadURL(uploadTask.ref);
+      
+      addBidderDocument(activeBidderUpload.bidderId, bidderDocType, file, downloadURL);
+    } catch (err) {
+      setError(`Failed to upload bidder document: ${err.message}`);
+    }
+    
     setActiveBidderUpload(null);
     setBidderDocType('Other');
   };
@@ -120,30 +142,40 @@ export default function Upload() {
     try {
       setExtractionProgress('Uploading documents...');
 
-      // ── Check if we have File objects (they are lost after page refresh) ──
-      const hasFiles = selectedProject.tenderDocuments.some(d => d.file) ||
-                       selectedProject.bidders.some(b => b.documents.some(d => d.file));
+      // ── Check if we have File objects or valid URLs (Firebase) ──
+      const hasFiles = selectedProject.tenderDocuments.some(d => d.file || (d.url && d.url.startsWith('http'))) ||
+                       selectedProject.bidders.some(b => b.documents.some(d => d.file || (d.url && d.url.startsWith('http'))));
 
       let pipelineResult = null;
 
       if (hasFiles) {
         // Real API call — upload files, get a job_id, then poll for completion
         const formData = new FormData();
-        selectedProject.tenderDocuments.forEach(doc => {
+        
+        for (const doc of selectedProject.tenderDocuments) {
           if (doc.file) {
-            formData.append('tender_documents', doc.file, doc.file.name);
+            formData.append('tender_documents', doc.file, doc.name);
+          } else if (doc.url && doc.url.startsWith('http')) {
+            const res = await fetch(doc.url);
+            const blob = await res.blob();
+            formData.append('tender_documents', blob, doc.name);
           }
-        });
+        }
 
         const bidderMapping = {};
-        selectedProject.bidders.forEach(bidder => {
-          bidder.documents.forEach(doc => {
+        for (const bidder of selectedProject.bidders) {
+          for (const doc of bidder.documents) {
             if (doc.file) {
-              formData.append('bidder_documents', doc.file, doc.file.name);
-              bidderMapping[doc.file.name] = bidder.id;
+              formData.append('bidder_documents', doc.file, doc.name);
+              bidderMapping[doc.name] = bidder.id;
+            } else if (doc.url && doc.url.startsWith('http')) {
+              const res = await fetch(doc.url);
+              const blob = await res.blob();
+              formData.append('bidder_documents', blob, doc.name);
+              bidderMapping[doc.name] = bidder.id;
             }
-          });
-        });
+          }
+        }
 
         formData.append('bidder_mapping', JSON.stringify(bidderMapping));
 
@@ -205,6 +237,33 @@ export default function Upload() {
         throw new Error('File objects were lost after browser reload. Please re-upload your documents and run extraction again.');
       }
 
+      setExtractionProgress('Uploading extracted images to cloud storage...');
+      
+      const processPackage = async (pkg) => {
+        if (!pkg || !pkg.images) return;
+        for (const img of pkg.images) {
+          if (img.image_bytes_b64) {
+            try {
+              const storageRef = ref(storage, `extracted_images/${Date.now()}_${img.image_ref}`);
+              await uploadString(storageRef, img.image_bytes_b64, 'base64');
+              img.image_url = await getDownloadURL(storageRef);
+              delete img.image_bytes_b64; // Free memory
+            } catch (err) {
+              console.warn('Failed to upload extracted image to Firebase:', err);
+            }
+          }
+        }
+      };
+      
+      if (pipelineResult && pipelineResult.tender_documents) {
+        for (const doc of Object.values(pipelineResult.tender_documents)) await processPackage(doc.package);
+      }
+      if (pipelineResult && pipelineResult.bidder_documents) {
+        for (const docs of Object.values(pipelineResult.bidder_documents)) {
+          for (const doc of Object.values(docs)) await processPackage(doc.package);
+        }
+      }
+
       setExtractionProgress('Processing extracted text...');
 
       // ── Derive extractedText from the extraction result ──
@@ -237,7 +296,7 @@ export default function Upload() {
 
       if (derivedCriteria.length === 0 && derivedText) {
         // Step A: Try LLM-based extraction (best quality)
-        setExtractionProgress('🤖 Running AI criteria extraction on tender document...');
+        setExtractionProgress(<>AI Running criteria extraction on tender document...</>);
         try {
           const analyzeRes = await TenderAPI.analyze({ tender_text: derivedText });
           const analyzeData = analyzeRes.data;
@@ -247,16 +306,16 @@ export default function Upload() {
             criteriaMethod = 'llm';
             criteriaLogs.push({
               level: 'success',
-              message: `✅ AI extracted ${analyzeData.criteria_count} criteria in ${analyzeData.duration_seconds}s (${analyzeData.provider})`,
+              message: `AI extracted ${analyzeData.criteria_count} criteria in ${analyzeData.duration_seconds}s (${analyzeData.provider})`,
             });
           } else {
             // LLM returned but with error status
             criteriaLogs.push({
               level: 'warning',
-              message: `⚠️ AI extraction returned no criteria: ${analyzeData.error || 'Unknown reason'}`,
+              message: `AI extraction returned no criteria: ${analyzeData.error || 'Unknown reason'}`,
             });
             if (analyzeData.fallback_hint) {
-              criteriaLogs.push({ level: 'info', message: `💡 ${analyzeData.fallback_hint}` });
+              criteriaLogs.push({ level: 'info', message: analyzeData.fallback_hint });
             }
             if (analyzeData.error_details?.length > 0) {
               analyzeData.error_details.forEach(d => {
@@ -268,9 +327,9 @@ export default function Upload() {
           // LLM call completely failed (network, timeout, etc.)
           criteriaLogs.push({
             level: 'warning',
-            message: `⚠️ AI criteria extraction failed: ${llmErr?.response?.data?.detail || llmErr.message || 'Unknown error'}`,
+            message: `AI criteria extraction failed: ${llmErr?.response?.data?.detail || llmErr.message || 'Unknown error'}`,
           });
-          criteriaLogs.push({ level: 'info', message: '💡 Falling back to pattern-based extraction...' });
+          criteriaLogs.push({ level: 'info', message: 'Falling back to pattern-based extraction...' });
         }
 
         // Step B: Regex fallback (if LLM produced nothing)
@@ -280,12 +339,12 @@ export default function Upload() {
           if (derivedCriteria.length > 0) {
             criteriaLogs.push({
               level: 'info',
-              message: `📝 Regex fallback extracted ${derivedCriteria.length} criteria. Please review and edit in Tender Setup.`,
+              message: `Regex fallback extracted ${derivedCriteria.length} criteria. Please review and edit in Tender Setup.`,
             });
           } else {
             criteriaLogs.push({
               level: 'warning',
-              message: '⚠️ No criteria extracted by AI or regex. You can add criteria manually in Tender Setup.',
+              message: 'No criteria extracted by AI or regex. You can add criteria manually in Tender Setup.',
             });
           }
         }
@@ -303,7 +362,7 @@ export default function Upload() {
         criteriaExtractionLogs: criteriaLogs,
       });
 
-      setExtractionProgress('✅ Extraction complete! Redirecting to Tender Setup...');
+      setExtractionProgress(<>Extraction complete! Redirecting to Tender Setup...</>);
       setTimeout(() => navigate('/tender'), 800);
 
     } catch (err) {
@@ -312,7 +371,7 @@ export default function Upload() {
         extractionStatus: 'failed',
         extractionError: err.message || 'Extraction pipeline failed.',
       });
-      setError(`❌ Extraction failed: ${err.message || 'Check documents and try again.'}`);
+      setError(`Extraction failed: ${err.message || 'Check documents and try again.'}`);
     } finally {
       setExtracting(false);
       setActiveJobId(null);
@@ -378,10 +437,11 @@ export default function Upload() {
             background: mode === 'upload' ? 'var(--accent)' : 'var(--bg-card)',
             color: mode === 'upload' ? '#fff' : 'var(--text-secondary)',
             transition: 'all 0.15s',
-          }}
-        >
-          📤 Upload Documents
-        </button>
+            display: 'flex', alignItems: 'center', gap: '8px'
+        }}
+      >
+        <UploadIcon size={16} /> Upload Documents
+      </button>
         <button
           onClick={() => setMode('sandbox')}
           style={{
@@ -395,16 +455,17 @@ export default function Upload() {
             background: mode === 'sandbox' ? 'var(--accent)' : 'var(--bg-card)',
             color: mode === 'sandbox' ? '#fff' : 'var(--text-secondary)',
             transition: 'all 0.15s',
-          }}
-        >
-          🌐 Use Sandbox API
-        </button>
+            display: 'flex', alignItems: 'center', gap: '8px'
+        }}
+      >
+        <Globe size={16} /> Use Sandbox API
+      </button>
       </div>
 
       {/* ── WORKFLOW STATUS TRACKER ── */}
       <div className="card" style={{ marginBottom: 24 }}>
         <div className="card-header">
-          <h3>📋 Workflow Status</h3>
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><ClipboardList size={20} /> Workflow Status</h3>
           <span className={`header-badge ${sourceLabel === 'SANDBOX' ? 'mock' : 'live'}`}>
             {sourceLabel}
           </span>
@@ -451,7 +512,7 @@ export default function Upload() {
           {/* ── TENDER DOCUMENTS ── */}
           <div className="card" style={{ marginBottom: 24 }}>
             <div className="card-header">
-              <h3>📋 Tender Documents</h3>
+              <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><ClipboardList size={20} /> Tender Documents</h3>
               <div style={{ display: 'flex', gap: 4 }}>
                 {TENDER_DOC_TYPES.map(type => (
                   <button key={type} className="btn btn-sm btn-secondary" onClick={() => setActiveTenderUpload(type)}>
@@ -463,8 +524,8 @@ export default function Upload() {
 
             {activeTenderUpload && (
               <div style={{ marginBottom: 16, padding: 12, background: 'var(--accent-light)', borderRadius: 'var(--radius-md)' }}>
-                <p style={{ fontSize: '0.8rem', fontWeight: 600, marginBottom: 8 }}>
-                  📁 Adding: {activeTenderUpload} document
+                <p style={{ fontSize: '0.8rem', fontWeight: 600, marginBottom: 8, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Folder size={14} /> Adding: {activeTenderUpload} document
                 </p>
                 <FileUpload label={`Drop ${activeTenderUpload} tender document`} onFile={handleTenderFile} />
                 <button className="btn btn-sm btn-secondary" onClick={() => setActiveTenderUpload(null)} style={{ marginTop: 8 }}>
@@ -507,7 +568,7 @@ export default function Upload() {
           {/* ── BIDDERS ── */}
           <div className="card" style={{ marginBottom: 24 }}>
             <div className="card-header">
-              <h3>🏢 Bidders</h3>
+              <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Building2 size={20} /> Bidders</h3>
             </div>
 
             <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
@@ -588,7 +649,7 @@ export default function Upload() {
                           fontSize: '0.8rem',
                           border: '1px solid var(--border-color)',
                         }}>
-                          <span style={{ fontSize: '0.9rem' }}>📄</span>
+                          <FileText size={16} className="text-muted" />
                           <span style={{ flex: 1, fontWeight: 500 }}>{doc.name}</span>
                           <span className={`verdict ${colorClass}`} style={{ fontSize: '0.7rem' }}>
                             {docType}
@@ -657,9 +718,9 @@ export default function Upload() {
           {extracting ? (
             <><span className="spinner" style={{ width: 16, height: 16 }}></span> Extracting...</>
           ) : project?.extractionStatus === 'complete' ? (
-            project?.criteriaLocked ? '📋 Go to Review & Correct →' : '📋 Go to Criteria Setup →'
+            project?.criteriaLocked ? <><ClipboardList size={18} /> Go to Review & Correct →</> : <><ClipboardList size={18} /> Go to Criteria Setup →</>
           ) : (
-            '⚡ Run Extraction & Proceed →'
+            <><Zap size={18} /> Run Extraction & Proceed →</>
           )}
         </button>
 
@@ -667,9 +728,9 @@ export default function Upload() {
           <button
             className="btn btn-outline"
             onClick={handleStopExtraction}
-            style={{ padding: '12px 24px', fontSize: '1rem', color: 'var(--fail)', borderColor: 'var(--fail)', backgroundColor: 'transparent' }}
+            style={{ padding: '12px 24px', fontSize: '1rem', color: 'var(--fail)', borderColor: 'var(--fail)', backgroundColor: 'transparent', display: 'flex', alignItems: 'center', gap: '8px' }}
           >
-            ⏹ Stop Extraction
+            <StopCircle size={16} /> Stop Extraction
           </button>
         )}
       </div>
@@ -869,14 +930,14 @@ function generateSyntheticExtraction(project) {
 
 /* Workflow step indicator */
 function WorkflowStep({ done, pending, label }) {
-  let icon = '⬜';
+  let icon = <Square size={16} />;
   let color = 'var(--text-muted)';
-  if (done) { icon = '✅'; color = 'var(--pass)'; }
-  else if (pending) { icon = '⏳'; color = 'var(--review)'; }
+  if (done) { icon = <CheckCircle size={16} />; color = 'var(--pass)'; }
+  else if (pending) { icon = <Hourglass size={16} />; color = 'var(--review)'; }
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-      <span style={{ fontSize: '1rem' }}>{icon}</span>
+      <span style={{ display: 'flex', color }}>{icon}</span>
       <span style={{ fontSize: '0.8rem', fontWeight: 500, color }}>{label}</span>
     </div>
   );

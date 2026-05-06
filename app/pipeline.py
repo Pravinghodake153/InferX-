@@ -17,6 +17,7 @@ import re
 import sys
 import time
 import traceback
+from datetime import datetime
 from typing import Dict, Any, Optional, List, Tuple
 
 if __package__ is None or __package__ == "":
@@ -377,6 +378,8 @@ def run_pipeline_from_text(tender_text: str, bidder_text: str, bidder_filename: 
     final_eval_data = []
     try:
         prompt = FINAL_EVALUATION_PROMPT.replace(
+            "{current_date}", datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        ).replace(
             "{criteria_data}", json.dumps(criteria_data, indent=2)
         ).replace(
             "{evidence_data}", json.dumps(evidence_data, indent=2)
@@ -592,6 +595,8 @@ def run_pipeline_with_criteria(
     final_eval_data = []
     try:
         prompt = FINAL_EVALUATION_PROMPT.replace(
+            "{current_date}", datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        ).replace(
             "{criteria_data}", json.dumps(criteria_data, indent=2)
         ).replace(
             "{evidence_data}", json.dumps(evidence_data, indent=2)

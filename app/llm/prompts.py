@@ -212,6 +212,8 @@ Rules:
 
 FINAL_EVALUATION_PROMPT = """You are evaluating bidder eligibility based on extracted criteria and evidence.
 
+Current System Date/Time: {current_date}
+
 Criteria (from tender):
 {criteria_data}
 

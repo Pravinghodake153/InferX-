@@ -31,11 +31,6 @@ try:
 except Exception:
     determine_skew = None
 
-try:
-    import camelot  # type: ignore
-except Exception:
-    camelot = None
-
 _OCR_ENGINES: Dict[str, Any] = {}  # lang -> PaddleOCR instance (lazy cache)
 
 # Indian script Unicode ranges for auto-detection
@@ -355,75 +350,12 @@ def _save_image_bytes(image_bytes: bytes, page_number: int, image_index: int, ex
     return f"/images/{file_name}"
 
 
-def _table_rows_to_text(rows: List[List[Any]]) -> str:
-    cleaned_rows: List[List[str]] = []
-    for row in rows:
-        if not row:
-            continue
-        cleaned_rows.append([str(cell).strip() if cell is not None else "" for cell in row])
-
-    if not cleaned_rows:
-        return ""
-
-    max_cols = max(len(row) for row in cleaned_rows)
-    normalized_rows = [row + [""] * (max_cols - len(row)) for row in cleaned_rows]
-    lines = []
-    for row in normalized_rows:
-        lines.append(" | ".join(cell or "" for cell in row).rstrip())
-    return "\n".join(lines)
-
-
-def _normalize_table_rows(rows: List[List[Any]]) -> List[List[str]]:
-    cleaned_rows: List[List[str]] = []
-    for row in rows:
-        if not row:
-            continue
-        cleaned_rows.append([str(cell).strip() if cell is not None else "" for cell in row])
-    return cleaned_rows
-
-
 def _extract_table_entries_for_page(pdf_path: str, page_number: int) -> List[Dict[str, Any]]:
-    """Extract tables using Camelot (lattice → stream fallback)."""
-    if camelot is None:
-        print("[TABLE] Camelot not installed — no table extraction available")
-        return []
-
-    table_entries: List[Dict[str, Any]] = []
-    try:
-        # Try lattice mode first (for tables with borders)
-        tables = camelot.read_pdf(pdf_path, pages=str(page_number), flavor='lattice')
-        if not tables or len(tables) == 0:
-            # Fallback to stream mode (for tables without borders)
-            tables = camelot.read_pdf(pdf_path, pages=str(page_number), flavor='stream')
-
-        if tables and len(tables) > 0:
-            for table_index, table in enumerate(tables, start=1):
-                df = table.df
-                rows = [list(row) for _, row in df.iterrows()]
-                rows = _normalize_table_rows(rows)
-                table_text = _table_rows_to_text(rows)
-                if not table_text:
-                    continue
-                accuracy = getattr(table, 'accuracy', 0)
-                table_entries.append({
-                    "page": page_number,
-                    "index": table_index,
-                    "rows": rows,
-                    "bbox": [0.0, 0.0, 0.0, 0.0],
-                    "text": f"TABLE (Page {page_number} #{table_index}):\n{table_text}",
-                    "extraction_engine": "camelot",
-                    "accuracy": round(accuracy, 1),
-                })
-            if table_entries:
-                print(f"[TABLE] Camelot extracted {len(table_entries)} tables from page {page_number}")
-    except Exception as exc:
-        print(f"[TABLE] Camelot failed on page {page_number}: {exc}")
-
-    return table_entries
-
+    # Table extraction has been removed
+    return []
 
 def _extract_tables_for_page(pdf_path: str, page_number: int) -> List[str]:
-    return [entry.get("text", "") for entry in _extract_table_entries_for_page(pdf_path, page_number) if entry.get("text")]
+    return []
 
 
 def _extract_images_for_page(doc: fitz.Document, page: fitz.Page, page_number: int, max_images: int = 4, prefix: str = "doc") -> List[Dict[str, Any]]:
