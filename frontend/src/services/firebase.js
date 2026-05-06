@@ -3,12 +3,12 @@ import { getStorage } from "firebase/storage";
 import { getAuth } from "firebase/auth";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBuTjJesfHYVDYpx2JG6TRX4lT36oKhS0c",
-  authDomain: "inferx-document-ai.firebaseapp.com",
-  projectId: "inferx-document-ai",
-  storageBucket: "inferx-document-ai.firebasestorage.app",
-  messagingSenderId: "71448695357",
-  appId: "1:71448695357:web:e8f50b0f5b31579ea89054"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
 // Initialize Firebase

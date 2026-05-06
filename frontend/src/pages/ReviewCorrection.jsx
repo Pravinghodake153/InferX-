@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useApp } from '../context/useApp';
 import { MASK_TYPES, createMaskToken, renderMaskedText, autoDetectMasks } from './reviewUtils';
-import { Edit3, Image, BarChart2, Lock, Eye, Unlock, FileText, Play, Search, ClipboardList, Link as LinkIcon, Shield, Edit2, Settings, Sparkles, AlertTriangle, CheckCircle, Save } from 'lucide-react';
+import { Edit3, Image, BarChart2, Lock, Eye, Unlock, FileText, Play, Search, Link as LinkIcon, Shield, Edit2, Settings, Sparkles, AlertTriangle, CheckCircle, Save } from 'lucide-react';
 
 export default function ReviewCorrection() {
   const { selectedProject, updateProject, selectedProjectId } = useApp();
@@ -40,7 +40,7 @@ export default function ReviewCorrection() {
 
   // Selected image/table index
   const [selectedImageIdx, setSelectedImageIdx] = useState(null);
-  const [selectedTableIdx, setSelectedTableIdx] = useState(null);
+  const [selectedTableIdx] = useState(null);
 
 
 

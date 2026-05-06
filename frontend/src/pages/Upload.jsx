@@ -6,7 +6,7 @@ import SandboxMode from '../components/SandboxMode';
 import { PipelineAPI, TenderAPI } from '../services/api';
 import { storage } from '../services/firebase';
 import { ref, uploadBytesResumable, getDownloadURL, uploadString } from 'firebase/storage';
-import { Upload as UploadIcon, Globe, ClipboardList, Folder, Building2, FileText, CheckCircle, Hourglass, Square, Bot, Edit3, StopCircle, Zap } from 'lucide-react';
+import { Upload as UploadIcon, Globe, ClipboardList, Folder, Building2, FileText, CheckCircle, Hourglass, Square, StopCircle, Zap } from 'lucide-react';
 
 const TENDER_DOC_TYPES = ['MAIN', 'ADDENDUM'];
 

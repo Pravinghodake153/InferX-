@@ -1,13 +1,15 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getFirestore, collection, addDoc, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
-const firebaseConfig = {
-    apiKey: "AIzaSyBuTjJesfHYVDYpx2JG6TRX4lT36oKhS0c",
-    authDomain: "inferx-document-ai.firebaseapp.com",
-    projectId: "inferx-document-ai",
-    storageBucket: "inferx-document-ai.firebasestorage.app",
-    messagingSenderId: "71448695357",
-    appId: "1:71448695357:web:e8f50b0f5b31579ea89054"
+// Firebase config loaded from environment or runtime injection
+// Set window.__FIREBASE_CONFIG before loading this module, or update values below.
+const firebaseConfig = window.__FIREBASE_CONFIG || {
+    apiKey: "",
+    authDomain: "",
+    projectId: "",
+    storageBucket: "",
+    messagingSenderId: "",
+    appId: ""
 };
 
 // Initialize Firebase
