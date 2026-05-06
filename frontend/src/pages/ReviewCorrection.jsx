@@ -344,8 +344,11 @@ export default function ReviewCorrection() {
                 <div className="image-grid">
                   {allImages.map((img, i) => (
                     <div key={i} className={`image-card ${selectedImageIdx === i ? 'selected' : ''}`} onClick={() => setSelectedImageIdx(i)}>
-                      <img src={img.image_url ? `/images/${img.image_url.replace('/images/', '')}` : ''} alt={img.image_ref} onError={e => { e.target.style.display = 'none'; }} />
-                      <div className="label">Page {img.pageNum} · #{img.index}</div>
+                      <img src={img.image_url || ''} alt={img.image_ref} onError={e => { e.target.style.display = 'none'; }} />
+                      <div className="label">
+                        Page {img.pageNum} · #{img.index}
+                        {img.image_url && <a href={img.image_url} target="_blank" rel="noopener noreferrer" style={{ marginLeft: 6, color: 'var(--accent)', textDecoration: 'none' }} title="Open original image from Firebase">⛶</a>}
+                      </div>
                     </div>
                   ))}
                 </div>
