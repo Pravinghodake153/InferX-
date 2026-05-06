@@ -383,95 +383,239 @@ THIN_BORDER = Border(
 
 
 def generate_excel_report(data: Dict[str, Any], output_path: str) -> str:
-    """Generate an Excel evaluation matrix."""
+    """Generate an Excel evaluation matrix.
+    
+    Handles both:
+    - Single-bidder format: data["evaluation"] = [...]
+    - Multi-bidder consolidated format: data["bidder_results"] = [{ "evaluation": [...] }, ...]
+    """
+    from openpyxl.utils import get_column_letter
+
     wb = Workbook()
     audit = build_audit_metadata(data)
-
-    # ── Sheet 1: Evaluation Matrix ──
-    ws = wb.active
-    ws.title = "Evaluation Matrix"
-
-    # Audit header
-    ws.append(["InferX — AI Tender Evaluation Report"])
-    ws.merge_cells('A1:G1')
-    ws['A1'].font = Font(bold=True, size=14, color="3b82f6")
-
-    ws.append([f"Evaluation ID: {audit['evaluation_id']}", "", "",
-               f"Timestamp: {audit['timestamp'][:19]}"])
-    ws.append([f"Provider: {audit['provider']}", "", "",
-               f"SHA-256: {audit['sha256_hash'][:32]}..."])
-    ws.append([])
-
-    # Headers
-    headers = ["ID", "Criterion", "Category", "Type", "Required", "Found", "Confidence", "Verdict", "Reason"]
-    ws.append(headers)
-    header_row = ws.max_row
-    for col_idx, _ in enumerate(headers, 1):
-        cell = ws.cell(row=header_row, column=col_idx)
-        cell.fill = HEADER_FILL
-        cell.font = HEADER_FONT
-        cell.alignment = Alignment(horizontal='center')
-        cell.border = THIN_BORDER
-
-    # Data rows
-    evals = data.get("evaluation", [])
     criteria_lookup = {c.get("criterion_id"): c for c in data.get("criteria", [])}
-    for i, e in enumerate(evals):
-        cid = e.get("criteria_id", "")
-        criterion = criteria_lookup.get(cid, {})
-        c_type = "Mandatory" if criterion.get("mandatory", True) else "Optional"
-        
-        row = [
-            cid,
-            e.get("criteria_name", ""),
-            e.get("category", ""),
-            c_type,
-            e.get("required_value", "-"),
-            e.get("extracted_value", "-"),
-            e.get("confidence", ""),
-            e.get("result", ""),
-            e.get("reason", ""),
-        ]
-        ws.append(row)
-        current_row = ws.max_row
 
-        # Apply formatting
-        verdict = e.get("result", "")
-        for col_idx in range(1, len(headers) + 1):
-            cell = ws.cell(row=current_row, column=col_idx)
-            cell.font = BODY_FONT
+    # Resolve evaluation data: flatten bidder_results if present
+    bidder_results = data.get("bidder_results", [])
+    flat_evals = data.get("evaluation", [])
+
+    # If consolidated format (multi-bidder), build per-bidder sheets
+    if bidder_results and len(bidder_results) > 0:
+        # ── Sheet 1: Summary ──
+        ws_summary = wb.active
+        ws_summary.title = "Summary"
+
+        ws_summary.append(["InferX -- Consolidated Evaluation Report"])
+        ws_summary.merge_cells('A1:F1')
+        ws_summary['A1'].font = Font(bold=True, size=14, color="3b82f6")
+
+        ws_summary.append([f"Evaluation ID: {audit['evaluation_id']}", "", "",
+                   f"Timestamp: {audit['timestamp'][:19]}"])
+        ws_summary.append([f"Provider: {audit['provider']}", "", "",
+                   f"SHA-256: {audit['sha256_hash'][:32]}..."])
+        ws_summary.append([f"Total Bidders: {len(bidder_results)}"])
+        ws_summary.append([])
+
+        # Summary table header
+        summary_headers = ["#", "Bidder Name", "Verdict", "Pass", "Fail", "Review"]
+        ws_summary.append(summary_headers)
+        summary_header_row = ws_summary.max_row
+        for col_idx, _ in enumerate(summary_headers, 1):
+            cell = ws_summary.cell(row=summary_header_row, column=col_idx)
+            cell.fill = HEADER_FILL
+            cell.font = HEADER_FONT
+            cell.alignment = Alignment(horizontal='center')
             cell.border = THIN_BORDER
-            if i % 2 == 1:
-                cell.fill = ALT_ROW_FILL
 
-        # Color verdict cell
-        verdict_cell = ws.cell(row=current_row, column=8)
-        if verdict == "PASS":
-            verdict_cell.fill = PASS_FILL
-            verdict_cell.font = Font(bold=True, color="166534", size=11)
-        elif verdict == "FAIL":
-            verdict_cell.fill = FAIL_FILL
-            verdict_cell.font = Font(bold=True, color="991b1b", size=11)
-        elif verdict == "REVIEW":
-            verdict_cell.fill = REVIEW_FILL
-            verdict_cell.font = Font(bold=True, color="92400e", size=11)
+        for idx, br in enumerate(bidder_results, 1):
+            bidder_name = br.get("bidder_name", f"Bidder {idx}")
+            verdict = br.get("verdict", "REVIEW_REQUIRED")
+            evals = br.get("evaluation", [])
+            pass_count = sum(1 for e in evals if e.get("result") == "PASS")
+            fail_count = sum(1 for e in evals if e.get("result") == "FAIL")
+            review_count = sum(1 for e in evals if e.get("result") == "REVIEW")
 
-    # Column widths
-    from openpyxl.utils import get_column_letter
-    col_widths = [8, 25, 12, 12, 15, 15, 12, 12, 50]
-    for i, w in enumerate(col_widths, 1):
-        ws.column_dimensions[get_column_letter(i)].width = w
+            ws_summary.append([idx, bidder_name, verdict, pass_count, fail_count, review_count])
+            current_row = ws_summary.max_row
 
-    # ── Sheet 2: Vigilance ──
-    ws2 = wb.create_sheet("Vigilance")
-    ws2.append(["Severity", "Type", "Criterion", "Reason", "Confidence"])
+            # Color the verdict cell
+            verdict_cell = ws_summary.cell(row=current_row, column=3)
+            if verdict == "ELIGIBLE":
+                verdict_cell.fill = PASS_FILL
+                verdict_cell.font = Font(bold=True, color="166534", size=11)
+            elif verdict == "NOT_ELIGIBLE":
+                verdict_cell.fill = FAIL_FILL
+                verdict_cell.font = Font(bold=True, color="991b1b", size=11)
+            else:
+                verdict_cell.fill = REVIEW_FILL
+                verdict_cell.font = Font(bold=True, color="92400e", size=11)
+
+            for col_idx in range(1, len(summary_headers) + 1):
+                cell = ws_summary.cell(row=current_row, column=col_idx)
+                cell.border = THIN_BORDER
+                if not cell.font or not cell.font.bold:
+                    cell.font = BODY_FONT
+                if idx % 2 == 0:
+                    if col_idx != 3:  # Don't override verdict color
+                        cell.fill = ALT_ROW_FILL
+
+        summary_col_widths = [6, 30, 18, 10, 10, 10]
+        for i, w in enumerate(summary_col_widths, 1):
+            ws_summary.column_dimensions[get_column_letter(i)].width = w
+
+        # ── Per-Bidder Sheets ──
+        for idx, br in enumerate(bidder_results, 1):
+            bidder_name = br.get("bidder_name", f"Bidder {idx}")
+            # Sheet names max 31 chars, no special chars
+            safe_name = bidder_name[:28].replace("/", "-").replace("\\", "-").replace("*", "").replace("?", "").replace("[", "").replace("]", "").replace(":", "-")
+            ws = wb.create_sheet(title=safe_name)
+
+            ws.append([f"Bidder: {bidder_name}"])
+            ws.merge_cells('A1:I1')
+            ws['A1'].font = Font(bold=True, size=14, color="3b82f6")
+
+            verdict = br.get("verdict", "REVIEW_REQUIRED")
+            ws.append([f"Verdict: {verdict}"])
+            ws['A2'].font = Font(bold=True, size=12,
+                                 color="166534" if verdict == "ELIGIBLE" else ("991b1b" if verdict == "NOT_ELIGIBLE" else "92400e"))
+            ws.append([])
+
+            # Headers
+            headers = ["ID", "Criterion", "Category", "Type", "Required", "Found", "Confidence", "Verdict", "Reason"]
+            ws.append(headers)
+            header_row = ws.max_row
+            for col_idx, _ in enumerate(headers, 1):
+                cell = ws.cell(row=header_row, column=col_idx)
+                cell.fill = HEADER_FILL
+                cell.font = HEADER_FONT
+                cell.alignment = Alignment(horizontal='center')
+                cell.border = THIN_BORDER
+
+            evals = br.get("evaluation", [])
+            for i, e in enumerate(evals):
+                cid = e.get("criterion_id", e.get("criteria_id", ""))
+                criterion = criteria_lookup.get(cid, {})
+                c_type = "Mandatory" if criterion.get("mandatory", e.get("mandatory", True)) else "Optional"
+
+                row = [
+                    cid,
+                    e.get("criteria_name", ""),
+                    e.get("category", ""),
+                    c_type,
+                    str(e.get("required_value", "-")),
+                    str(e.get("evidence_found", e.get("extracted_value", "-"))),
+                    str(e.get("confidence", "")),
+                    e.get("result", ""),
+                    str(e.get("reason", "")),
+                ]
+                ws.append(row)
+                current_row = ws.max_row
+
+                result = e.get("result", "")
+                for col_idx in range(1, len(headers) + 1):
+                    cell = ws.cell(row=current_row, column=col_idx)
+                    cell.font = BODY_FONT
+                    cell.border = THIN_BORDER
+                    if i % 2 == 1:
+                        cell.fill = ALT_ROW_FILL
+
+                # Color verdict cell
+                verdict_cell = ws.cell(row=current_row, column=8)
+                if result == "PASS":
+                    verdict_cell.fill = PASS_FILL
+                    verdict_cell.font = Font(bold=True, color="166534", size=11)
+                elif result == "FAIL":
+                    verdict_cell.fill = FAIL_FILL
+                    verdict_cell.font = Font(bold=True, color="991b1b", size=11)
+                elif result == "REVIEW":
+                    verdict_cell.fill = REVIEW_FILL
+                    verdict_cell.font = Font(bold=True, color="92400e", size=11)
+
+            col_widths = [8, 25, 12, 12, 15, 15, 12, 12, 50]
+            for i, w in enumerate(col_widths, 1):
+                ws.column_dimensions[get_column_letter(i)].width = w
+
+    else:
+        # ── Single-bidder fallback (legacy format) ──
+        ws = wb.active
+        ws.title = "Evaluation Matrix"
+
+        ws.append(["InferX -- AI Tender Evaluation Report"])
+        ws.merge_cells('A1:G1')
+        ws['A1'].font = Font(bold=True, size=14, color="3b82f6")
+
+        ws.append([f"Evaluation ID: {audit['evaluation_id']}", "", "",
+                   f"Timestamp: {audit['timestamp'][:19]}"])
+        ws.append([f"Provider: {audit['provider']}", "", "",
+                   f"SHA-256: {audit['sha256_hash'][:32]}..."])
+        ws.append([])
+
+        headers = ["ID", "Criterion", "Category", "Type", "Required", "Found", "Confidence", "Verdict", "Reason"]
+        ws.append(headers)
+        header_row = ws.max_row
+        for col_idx, _ in enumerate(headers, 1):
+            cell = ws.cell(row=header_row, column=col_idx)
+            cell.fill = HEADER_FILL
+            cell.font = HEADER_FONT
+            cell.alignment = Alignment(horizontal='center')
+            cell.border = THIN_BORDER
+
+        for i, e in enumerate(flat_evals):
+            cid = e.get("criteria_id", "")
+            criterion = criteria_lookup.get(cid, {})
+            c_type = "Mandatory" if criterion.get("mandatory", True) else "Optional"
+
+            row = [
+                cid,
+                e.get("criteria_name", ""),
+                e.get("category", ""),
+                c_type,
+                str(e.get("required_value", "-")),
+                str(e.get("extracted_value", "-")),
+                str(e.get("confidence", "")),
+                e.get("result", ""),
+                str(e.get("reason", "")),
+            ]
+            ws.append(row)
+            current_row = ws.max_row
+
+            verdict = e.get("result", "")
+            for col_idx in range(1, len(headers) + 1):
+                cell = ws.cell(row=current_row, column=col_idx)
+                cell.font = BODY_FONT
+                cell.border = THIN_BORDER
+                if i % 2 == 1:
+                    cell.fill = ALT_ROW_FILL
+
+            verdict_cell = ws.cell(row=current_row, column=8)
+            if verdict == "PASS":
+                verdict_cell.fill = PASS_FILL
+                verdict_cell.font = Font(bold=True, color="166534", size=11)
+            elif verdict == "FAIL":
+                verdict_cell.fill = FAIL_FILL
+                verdict_cell.font = Font(bold=True, color="991b1b", size=11)
+            elif verdict == "REVIEW":
+                verdict_cell.fill = REVIEW_FILL
+                verdict_cell.font = Font(bold=True, color="92400e", size=11)
+
+        col_widths = [8, 25, 12, 12, 15, 15, 12, 12, 50]
+        for i, w in enumerate(col_widths, 1):
+            ws.column_dimensions[get_column_letter(i)].width = w
+
+    # ── Vigilance Sheet ──
+    ws_vig = wb.create_sheet("Vigilance")
+    ws_vig.append(["Severity", "Type", "Criterion", "Reason", "Confidence"])
     for col_idx in range(1, 6):
-        cell = ws2.cell(row=1, column=col_idx)
+        cell = ws_vig.cell(row=1, column=col_idx)
         cell.fill = HEADER_FILL
         cell.font = HEADER_FONT
 
-    for issue in data.get("issues", []):
-        ws2.append([
+    # Collect issues from all bidder_results or top-level
+    all_issues = data.get("issues", [])
+    for br in bidder_results:
+        all_issues.extend(br.get("issues", []))
+    for issue in all_issues:
+        ws_vig.append([
             issue.get("severity", ""),
             issue.get("issue_type", ""),
             issue.get("criterion_id", ""),
@@ -479,16 +623,19 @@ def generate_excel_report(data: Dict[str, Any], output_path: str) -> str:
             issue.get("confidence", ""),
         ])
 
-    # ── Sheet 3: Verification ──
-    ws3 = wb.create_sheet("Verification")
-    ws3.append(["Identifier", "Type", "Status", "Confidence", "Details"])
+    # ── Verification Sheet ──
+    ws_ver = wb.create_sheet("Verification")
+    ws_ver.append(["Identifier", "Type", "Status", "Confidence", "Details"])
     for col_idx in range(1, 6):
-        cell = ws3.cell(row=1, column=col_idx)
+        cell = ws_ver.cell(row=1, column=col_idx)
         cell.fill = HEADER_FILL
         cell.font = HEADER_FONT
 
-    for v in data.get("verification", []):
-        ws3.append([
+    all_verifications = data.get("verification", [])
+    for br in bidder_results:
+        all_verifications.extend(br.get("verification", []))
+    for v in all_verifications:
+        ws_ver.append([
             v.get("identifier", ""),
             v.get("identifier_type", ""),
             v.get("status", ""),
@@ -756,9 +903,9 @@ def generate_consolidated_pdf(data: Dict[str, Any], output_path: str) -> str:
                 criterion = next((c for c in criteria if c.get("criterion_id") == cid), {})
                 c_type = "Mandatory" if criterion.get("mandatory", True) else "Optional"
                 
-                icon = "✅" if result == "PASS" else ("❌" if result == "FAIL" else "⚠️")
+                status_text = "[PASS]" if result == "PASS" else ("[FAIL]" if result == "FAIL" else "[REVIEW]")
                 content.append(Paragraph(
-                    f"<b>{cid} — {c_name}</b> [{c_type}] {icon} {result}", body_style
+                    f"<b>{cid} — {c_name}</b> [{c_type}] {status_text}", body_style
                 ))
                 content.append(Paragraph(f"→ {reason}", small_style))
                 content.append(Spacer(1, 2 * mm))

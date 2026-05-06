@@ -350,11 +350,23 @@ export default function Upload() {
         }
       }
 
+      // Upload the payload to Firebase
+      let payloadUrl = null;
+      try {
+        const payloadRef = ref(storage, `payloads/extraction_${selectedProjectId}_${Date.now()}.json`);
+        await uploadString(payloadRef, JSON.stringify(pipelineResult), 'raw', { contentType: 'application/json' });
+        payloadUrl = await getDownloadURL(payloadRef);
+        console.log("Payload uploaded to Firebase:", payloadUrl);
+      } catch (fbErr) {
+        console.error("Failed to upload payload to Firebase:", fbErr);
+      }
+
       // Store extraction results
       updateProject(selectedProjectId, {
         status: 'extracted',
         extractionStatus: 'complete',
         extractedContent: pipelineResult,
+        payloadUrl: payloadUrl,
         extractedText: derivedText,
         extractedCriteria: derivedCriteria,
         extractedBidderData: derivedBidderData,

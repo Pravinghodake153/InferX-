@@ -174,7 +174,7 @@ export default function Settings() {
              </div>
           )}
 
-          <h4 style={{ fontSize: '0.85rem', marginBottom: 8, color: 'var(--text-main)' }}>Extraction (OCR) Payload Details</h4>
+          <h4 style={{ fontSize: '0.85rem', marginBottom: 8, color: 'var(--text-main)' }}>LLM Payload Preview</h4>
           <div style={{ 
             background: '#1e293b', color: '#cbd5e1', 
             padding: 12, borderRadius: 8, 
@@ -182,14 +182,17 @@ export default function Settings() {
             maxHeight: 200, overflow: 'auto',
             whiteSpace: 'pre-wrap'
           }}>
-            {selectedProject?.extractedContent ? (
-              JSON.stringify({
-                tender_documents: Object.keys(selectedProject.extractedContent.tender_documents || {}),
-                bidder_documents: Object.keys(selectedProject.extractedContent.bidder_documents || {}),
-                criteria_auto_extracted: selectedProject.extractedCriteria?.length || 0
-              }, null, 2)
+            {selectedProject?.payloadUrl ? (
+              <div style={{ padding: '8px 0' }}>
+                <p style={{ margin: '0 0 8px 0', color: 'var(--text-secondary)' }}>Full payload safely stored in Firebase Storage:</p>
+                <a href={selectedProject.payloadUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', textDecoration: 'underline', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  <Link size={14} /> Open JSON Payload
+                </a>
+              </div>
+            ) : selectedProject?.extractedContent ? (
+              <p style={{ color: 'var(--text-secondary)' }}>Payload exists in memory, but was not stored in Firebase.</p>
             ) : (
-              '// No extraction payload available in current session'
+              '// No LLM payload available in current session'
             )}
           </div>
         </div>

@@ -5,3 +5,9 @@ _uploads/
 .env
 .DS_Store
 *.pyc
+exports/
+audit_logs/
+backend_test.log
+frontend/dist/
+scratch/
+.agents/
