@@ -108,12 +108,12 @@ def generate_pdf_report(data: Dict[str, Any], output_path: str) -> str:
     )
     body_style = ParagraphStyle(
         'Body', parent=styles['Normal'],
-        fontSize=9, textColor=colors.black,
+        fontSize=11, textColor=colors.black,
         spaceAfter=4
     )
     small_style = ParagraphStyle(
         'Small', parent=styles['Normal'],
-        fontSize=8, textColor=TEXT_GRAY,
+        fontSize=10, textColor=TEXT_GRAY,
         spaceAfter=2
     )
 
@@ -227,22 +227,26 @@ def generate_pdf_report(data: Dict[str, Any], output_path: str) -> str:
     content.append(Paragraph("Evaluation Results", section_style))
 
     if evals:
-        eval_header = ["ID", "Criterion", "Required", "Found", "Confidence", "Verdict"]
+        eval_header = ["ID", "Criterion", "Type", "Required", "Found", "Verdict"]
         eval_rows = [eval_header]
         for e in evals:
             verdict = e.get("result", "")
+            cid = e.get("criteria_id", "")
+            criterion = criteria_lookup.get(cid, {})
+            c_type = "Mandatory" if criterion.get("mandatory", True) else "Optional"
+            
             eval_rows.append([
-                e.get("criteria_id", ""),
+                cid,
                 Paragraph(e.get("criteria_name", ""), body_style),
+                c_type,
                 e.get("required_value", "-"),
                 e.get("extracted_value", "-"),
-                e.get("confidence", ""),
                 verdict
             ])
 
-        eval_table = Table(eval_rows, colWidths=[40, 140, 80, 80, 60, 60])
+        eval_table = Table(eval_rows, colWidths=[40, 130, 60, 80, 90, 60])
         eval_table.setStyle(TableStyle([
-            ('FONTSIZE', (0, 0), (-1, -1), 8),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
             ('BACKGROUND', (0, 0), (-1, 0), HEADER_BG),
             ('TEXTCOLOR', (0, 0), (-1, 0), TEXT_WHITE),
@@ -368,8 +372,8 @@ PASS_FILL = PatternFill(start_color="dcfce7", end_color="dcfce7", fill_type="sol
 FAIL_FILL = PatternFill(start_color="fecaca", end_color="fecaca", fill_type="solid")
 REVIEW_FILL = PatternFill(start_color="fef3c7", end_color="fef3c7", fill_type="solid")
 ALT_ROW_FILL = PatternFill(start_color="f1f5f9", end_color="f1f5f9", fill_type="solid")
-HEADER_FONT = Font(bold=True, color="FFFFFF", size=10)
-BODY_FONT = Font(size=9, color="1e293b")
+HEADER_FONT = Font(bold=True, color="FFFFFF", size=12)
+BODY_FONT = Font(size=11, color="1e293b")
 THIN_BORDER = Border(
     left=Side(style='thin', color='cbd5e1'),
     right=Side(style='thin', color='cbd5e1'),
@@ -399,7 +403,7 @@ def generate_excel_report(data: Dict[str, Any], output_path: str) -> str:
     ws.append([])
 
     # Headers
-    headers = ["ID", "Criterion", "Category", "Required", "Found", "Confidence", "Verdict", "Reason"]
+    headers = ["ID", "Criterion", "Category", "Type", "Required", "Found", "Confidence", "Verdict", "Reason"]
     ws.append(headers)
     header_row = ws.max_row
     for col_idx, _ in enumerate(headers, 1):
@@ -411,11 +415,17 @@ def generate_excel_report(data: Dict[str, Any], output_path: str) -> str:
 
     # Data rows
     evals = data.get("evaluation", [])
+    criteria_lookup = {c.get("criterion_id"): c for c in data.get("criteria", [])}
     for i, e in enumerate(evals):
+        cid = e.get("criteria_id", "")
+        criterion = criteria_lookup.get(cid, {})
+        c_type = "Mandatory" if criterion.get("mandatory", True) else "Optional"
+        
         row = [
-            e.get("criteria_id", ""),
+            cid,
             e.get("criteria_name", ""),
             e.get("category", ""),
+            c_type,
             e.get("required_value", "-"),
             e.get("extracted_value", "-"),
             e.get("confidence", ""),
@@ -435,20 +445,20 @@ def generate_excel_report(data: Dict[str, Any], output_path: str) -> str:
                 cell.fill = ALT_ROW_FILL
 
         # Color verdict cell
-        verdict_cell = ws.cell(row=current_row, column=7)
+        verdict_cell = ws.cell(row=current_row, column=8)
         if verdict == "PASS":
             verdict_cell.fill = PASS_FILL
-            verdict_cell.font = Font(bold=True, color="166534", size=9)
+            verdict_cell.font = Font(bold=True, color="166534", size=11)
         elif verdict == "FAIL":
             verdict_cell.fill = FAIL_FILL
-            verdict_cell.font = Font(bold=True, color="991b1b", size=9)
+            verdict_cell.font = Font(bold=True, color="991b1b", size=11)
         elif verdict == "REVIEW":
             verdict_cell.fill = REVIEW_FILL
-            verdict_cell.font = Font(bold=True, color="92400e", size=9)
+            verdict_cell.font = Font(bold=True, color="92400e", size=11)
 
     # Column widths
     from openpyxl.utils import get_column_letter
-    col_widths = [8, 25, 12, 15, 15, 12, 12, 40]
+    col_widths = [8, 25, 12, 12, 15, 15, 12, 12, 50]
     for i, w in enumerate(col_widths, 1):
         ws.column_dimensions[get_column_letter(i)].width = w
 
@@ -561,7 +571,7 @@ def generate_consolidated_pdf(data: Dict[str, Any], output_path: str) -> str:
                                     fontSize=13, textColor=ACCENT_BLUE,
                                     spaceBefore=8, spaceAfter=6)
     body_style = ParagraphStyle('ConsoBody', parent=styles['Normal'],
-                                 fontSize=9, textColor=colors.black,
+                                 fontSize=11, textColor=colors.black,
                                  spaceAfter=3, leading=12)
     small_style = ParagraphStyle('ConsoSmall', parent=styles['Normal'],
                                   fontSize=7, textColor=TEXT_GRAY, leading=10)
@@ -713,6 +723,49 @@ def generate_consolidated_pdf(data: Dict[str, Any], output_path: str) -> str:
             ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor("#f8fafc")]),
         ]))
         content.append(matrix_table)
+
+    # ── Detailed Bidder Explanations ──
+    content.append(PageBreak())
+    content.append(Paragraph("Detailed Bidder Explanations", section_style))
+    content.append(Paragraph("A to Z breakdown of each bidder's evaluation, including mandatory/optional criteria and detailed reasoning.", small_style))
+    content.append(Spacer(1, 6 * mm))
+
+    for b in bidder_results:
+        b_name = b.get("bidder_name", "Unknown Bidder")
+        b_verdict = b.get("verdict", "UNKNOWN").replace("_", " ")
+        v_color = PASS_COLOR if b_verdict == "ELIGIBLE" else (FAIL_COLOR if b_verdict == "NOT ELIGIBLE" else REVIEW_COLOR)
+        
+        b_title_style = ParagraphStyle('BTitle', parent=styles['Heading3'], fontSize=12, textColor=ACCENT_BLUE, spaceAfter=2)
+        b_verdict_style = ParagraphStyle('BVerdict', parent=styles['Normal'], fontSize=10, textColor=v_color, spaceAfter=8, fontName='Helvetica-Bold')
+        
+        content.append(HRFlowable(width="100%", color=colors.HexColor("#e2e8f0"), thickness=1))
+        content.append(Spacer(1, 4 * mm))
+        content.append(Paragraph(f"Bidder: {b_name}", b_title_style))
+        content.append(Paragraph(f"Final Verdict: {b_verdict}", b_verdict_style))
+
+        # Criteria details for this bidder
+        b_evals = b.get("evaluation", [])
+        if b_evals:
+            for e in b_evals:
+                cid = e.get("criterion_id", "")
+                c_name = e.get("criteria_name", cid)
+                result = e.get("result", "")
+                reason = e.get("reason", "No reason provided.")
+                
+                # Identify if mandatory from global criteria
+                criterion = next((c for c in criteria if c.get("criterion_id") == cid), {})
+                c_type = "Mandatory" if criterion.get("mandatory", True) else "Optional"
+                
+                icon = "✅" if result == "PASS" else ("❌" if result == "FAIL" else "⚠️")
+                content.append(Paragraph(
+                    f"<b>{cid} — {c_name}</b> [{c_type}] {icon} {result}", body_style
+                ))
+                content.append(Paragraph(f"→ {reason}", small_style))
+                content.append(Spacer(1, 2 * mm))
+        else:
+            content.append(Paragraph("No detailed evaluation data available.", small_style))
+        
+        content.append(Spacer(1, 6 * mm))
 
     # ── Sign-Off ──
     content.append(Spacer(1, 12 * mm))

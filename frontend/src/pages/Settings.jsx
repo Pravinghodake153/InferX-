@@ -18,7 +18,7 @@ const OPENROUTER_MODELS = [
 
 const GEMINI_MODELS = [
   { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (Fast)' },
-  { id: 'gemini-2.0-flash-exp', label: 'Gemini 2.0 Flash (Experimental)' },
+  { id: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash (Experimental)' },
   { id: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro (Heavy)' },
 ];
 

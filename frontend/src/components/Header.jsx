@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useApp } from '../context/useApp';
-import { Landmark, Lock, Unlock, Moon, Sun, Menu } from 'lucide-react';
+import { Landmark, Moon, Sun, Menu } from 'lucide-react';
 
 export default function Header() {
   const { toggleSidebar, sidebarCollapsed, selectedProject } = useApp();

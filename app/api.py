@@ -15,7 +15,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 
 from app.pipeline import run_pipeline_from_text, run_pipeline_with_criteria
 from app.ingestion.pdf import (
@@ -1130,3 +1130,70 @@ async def get_evaluation(input_hash: str):
     if not record:
         raise HTTPException(status_code=404, detail=f"Evaluation {input_hash} not found.")
     return record
+
+# ═══════════════════════════════════════════
+#  CHATBOT API
+# ═══════════════════════════════════════════
+
+class ChatRequest(BaseModel):
+    message: str
+    context: Dict[str, Any]
+
+@app.post("/api/chat")
+async def chat_endpoint(req: ChatRequest):
+    """Context-aware AI Chatbot endpoint with fallback."""
+    import os
+    import requests
+    import google.generativeai as genai
+    try:
+        system_prompt = (
+            "You are an InferX AI Chatbot, an intelligent assistant for the CRPF Tender Evaluation system. "
+            "Your job is to guide users, explain evaluation results, and troubleshoot issues. "
+            "You have access to the current evaluation context. Be concise, helpful, and professional. "
+            "If a user asks why a bidder passed or failed, look at the provided context and explain clearly."
+        )
+        
+        full_prompt = f"System: {system_prompt}\n\nUser Message: {req.message}\n\nCurrent Context:\n{json.dumps(req.context, indent=2)}"
+        
+        # Try Gemini Flash first
+        try:
+            api_key = os.getenv("GEMINI_API_KEY")
+            if not api_key:
+                raise Exception("GEMINI_API_KEY not set")
+            genai.configure(api_key=api_key)
+            model = genai.GenerativeModel("gemini-2.5-flash")
+            response = model.generate_content(full_prompt)
+            if not response.text:
+                raise Exception("Empty response from Gemini")
+            reply = response.text
+        except Exception as gemini_err:
+            print(f"Gemini Chatbot failed, falling back to OpenRouter: {gemini_err}")
+            # Fallback to OpenRouter
+            or_key = os.getenv("OPENROUTER_API_KEY")
+            if not or_key:
+                raise Exception(f"OpenRouter key missing. Original Gemini error: {gemini_err}")
+                
+            headers = {
+                "Authorization": f"Bearer {or_key}",
+                "HTTP-Referer": "http://localhost:5173",
+                "X-Title": "InferX Chatbot",
+            }
+            payload = {
+                "model": "google/gemini-2.5-flash",
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": f"User Message: {req.message}\n\nCurrent Context:\n{json.dumps(req.context)}"}
+                ]
+            }
+            res = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload, timeout=15)
+            if res.status_code != 200:
+                print(f"[OpenRouter Error]: {res.text}")
+                res.raise_for_status()
+            data = res.json()
+            reply = data["choices"][0]["message"]["content"]
+            
+        return {"reply": reply}
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))

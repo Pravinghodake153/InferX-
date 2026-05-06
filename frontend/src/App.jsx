@@ -10,6 +10,7 @@ import ReviewCorrection from './pages/ReviewCorrection';
 import Evaluation from './pages/Evaluation';
 import ConsolidatedReport from './pages/ConsolidatedReport';
 import Settings from './pages/Settings';
+import Chatbot from './components/Chatbot';
 
 export default function App() {
   return (
@@ -40,6 +41,7 @@ export default function App() {
               <RouteGuard page="settings"><Settings /></RouteGuard>
             } />
           </Routes>
+          <Chatbot />
         </Layout>
       </BrowserRouter>
     </AppProvider>

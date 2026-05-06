@@ -1,0 +1,274 @@
+{
+  "audit_metadata": {
+    "evaluation_id": "EVAL-8BF77602",
+    "timestamp": "2026-05-06T19:21:14.816709",
+    "model_version": "InferX v2.0",
+    "pipeline_version": "7-step",
+    "provider": "unknown",
+    "sha256_hash": "d2f4aba23e712ba4d590c6ddc24764dd7885bf74cbe08255f72706cd732e0770",
+    "criteria_count": 14,
+    "evidence_count": 0,
+    "issues_count": 0
+  },
+  "evaluation_data": {
+    "criteria": [
+      {
+        "criterion_id": "C001",
+        "name": "Average Annual Financial Turnover",
+        "description": "The Average Annual Financial Turnover of the bidder during the last three financial years (i.e., FY 2023-24, 2024-25, and 2025-26) must not be less than \u20b910.00 Crores.",
+        "required_value": "\u20b910.00 Crores",
+        "normalized_required_value": 100000000,
+        "type": "numeric",
+        "category": "financial",
+        "mandatory": true,
+        "comparison_operator": ">=",
+        "units": "INR",
+        "source": {
+          "page": 1,
+          "raw_snippet": "2.1 Financial Standing: The bidder must have a sound financial background. The Average Annual Financial Turnover of the bidder during the last three financial years (i.e., FY 2023-24, 2024-25, and 2025-26) must not be less than \u20b910.00 Crores (Rupees Ten Crores only).",
+          "source_type": null
+        },
+        "confidence": "HIGH"
+      },
+      {
+        "criterion_id": "C002",
+        "name": "Past Experience (UAV/Drone Supply)",
+        "description": "Successfully executed at least one contract for the supply of Unmanned Aerial Vehicles (UAVs) or Surveillance Drones to any Central/State Government Department, Defense Forces, or Central Armed Police Forces (CAPF).",
+        "required_value": "at least one contract for the supply of Unmanned Aerial Vehicles (UAVs) or Surveillance Drones to any Central/State Government Department, Defense Forces, or Central Armed Police Forces (CAPF)",
+        "normalized_required_value": null,
+        "type": "subjective",
+        "category": "technical",
+        "mandatory": true,
+        "comparison_operator": ">=",
+        "units": "contracts",
+        "source": {
+          "page": 1,
+          "raw_snippet": "2.2 Past Experience and Performance: The bidder must have successfully executed at least one contract for the supply of Unmanned Aerial Vehicles (UAVs) or Surveillance Drones to any Central/State Government Department, Defense Forces, or Central Armed Police Forces (CAPF) within the last three (3) years from the date of tender publication.",
+          "source_type": null
+        },
+        "confidence": "HIGH"
+      },
+      {
+        "criterion_id": "C003",
+        "name": "Experience Timeframe",
+        "description": "The executed contract for UAV/Drone supply must be within the last three (3) years from the date of tender publication.",
+        "required_value": "last three (3) years",
+        "normalized_required_value": 3,
+        "type": "numeric",
+        "category": "technical",
+        "mandatory": true,
+        "comparison_operator": "<=",
+        "units": "years",
+        "source": {
+          "page": 1,
+          "raw_snippet": "within the last three (3) years from the date of tender publication.",
+          "source_type": null
+        },
+        "confidence": "HIGH"
+      },
+      {
+        "criterion_id": "C004",
+        "name": "ISO 27001 Certification",
+        "description": "Possess a valid and active ISO 27001 certification for Information Security Management Systems.",
+        "required_value": "valid and active ISO 27001 certification",
+        "normalized_required_value": null,
+        "type": "boolean",
+        "category": "compliance",
+        "mandatory": true,
+        "comparison_operator": "==",
+        "units": null,
+        "source": {
+          "page": 1,
+          "raw_snippet": "2.3 Information Security Certification: Given the sensitive nature of the surveillance data, the bidder's software and data processing units must comply with international security standards. The bidder must possess a valid and active ISO 27001 certification for Information Security Management Systems.",
+          "source_type": null
+        },
+        "confidence": "HIGH"
+      },
+      {
+        "criterion_id": "C005",
+        "name": "PAN Card Submission",
+        "description": "Copy of the Permanent Account Number (PAN) registered under the bidding entity's name.",
+        "required_value": "Copy of the Permanent Account Number (PAN)",
+        "normalized_required_value": null,
+        "type": "document",
+        "category": "compliance",
+        "mandatory": true,
+        "comparison_operator": "==",
+        "units": null,
+        "source": {
+          "page": 2,
+          "raw_snippet": "\u25cf\u200b PAN Card: Copy of the Permanent Account Number (PAN) registered under the bidding entity's name.",
+          "source_type": null
+        },
+        "confidence": "HIGH"
+      },
+      {
+        "criterion_id": "C006",
+        "name": "GST Registration Certificate Submission",
+        "description": "Copy of a valid GSTIN Registration Certificate.",
+        "required_value": "Copy of a valid GSTIN Registration Certificate.",
+        "normalized_required_value": null,
+        "type": "document",
+        "category": "compliance",
+        "mandatory": true,
+        "comparison_operator": "==",
+        "units": null,
+        "source": {
+          "page": 2,
+          "raw_snippet": "\u25cf\u200b GST Registration: Copy of a valid GSTIN Registration Certificate.",
+          "source_type": null
+        },
+        "confidence": "HIGH"
+      },
+      {
+        "criterion_id": "C007",
+        "name": "Class-I Local Supplier Status",
+        "description": "Preference will be given to 'Class-I Local Suppliers' in accordance with the Public Procurement (Preference to Make in India) Order 2017.",
+        "required_value": "Class-I Local Suppliers",
+        "normalized_required_value": null,
+        "type": "boolean",
+        "category": "compliance",
+        "mandatory": false,
+        "comparison_operator": "==",
+        "units": null,
+        "source": {
+          "page": 2,
+          "raw_snippet": "In accordance with the Public Procurement (Preference to Make in India) Order 2017, preference will be given to 'Class-I Local Suppliers'.",
+          "source_type": null
+        },
+        "confidence": "HIGH"
+      },
+      {
+        "criterion_id": "C008",
+        "name": "MSME Status (Udyog Aadhaar/Udyam)",
+        "description": "Bidders claiming MSME status must submit a valid Udyog Aadhaar or Udyam Registration Certificate.",
+        "required_value": "valid Udyog Aadhaar or Udyam Registration Certificate",
+        "normalized_required_value": null,
+        "type": "document",
+        "category": "compliance",
+        "mandatory": false,
+        "comparison_operator": "==",
+        "units": null,
+        "source": {
+          "page": 2,
+          "raw_snippet": "\u25cf\u200b Bidders claiming MSME status must submit a valid Udyog Aadhaar or Udyam Registration Certificate.",
+          "source_type": null
+        },
+        "confidence": "HIGH"
+      },
+      {
+        "criterion_id": "C009",
+        "name": "Startup Exemption from Past Experience",
+        "description": "Startups recognized by DPIIT are eligible for exemption from the prior experience clause (Clause 2.2), provided they meet the technical specifications.",
+        "required_value": "recognized by DPIIT",
+        "normalized_required_value": null,
+        "type": "boolean",
+        "category": "compliance",
+        "mandatory": false,
+        "comparison_operator": "==",
+        "units": null,
+        "source": {
+          "page": 2,
+          "raw_snippet": "\u25cf\u200b Startups recognized by DPIIT are eligible for exemption from the prior experience clause (Clause 2.2), provided they meet the technical specifications, but they must still meet the financial turnover requirements.",
+          "source_type": null
+        },
+        "confidence": "HIGH"
+      },
+      {
+        "criterion_id": "C010",
+        "name": "Camera Payload Capability",
+        "description": "Dual-sensor capability (4K Optical + Radiometric Thermal).",
+        "required_value": "Dual-sensor capability (4K Optical + Radiometric Thermal)",
+        "normalized_required_value": null,
+        "type": "subjective",
+        "category": "technical",
+        "mandatory": true,
+        "comparison_operator": "==",
+        "units": null,
+        "source": {
+          "page": 2,
+          "raw_snippet": "\u25cf\u200b Camera Payload: Dual-sensor capability (4K Optical + Radiometric Thermal).",
+          "source_type": null
+        },
+        "confidence": "HIGH"
+      },
+      {
+        "criterion_id": "C011",
+        "name": "AI Edge Processing (Detection Range)",
+        "description": "Onboard chip capable of human/vehicle detection at a minimum range of 500 meters.",
+        "required_value": "minimum range of 500 meters",
+        "normalized_required_value": 500,
+        "type": "numeric",
+        "category": "technical",
+        "mandatory": true,
+        "comparison_operator": ">=",
+        "units": "meters",
+        "source": {
+          "page": 2,
+          "raw_snippet": "\u25cf\u200b AI Edge Processing: Onboard chip capable of human/vehicle detection at a minimum range of 500 meters.",
+          "source_type": null
+        },
+        "confidence": "HIGH"
+      },
+      {
+        "criterion_id": "C012",
+        "name": "Minimum Flight Time",
+        "description": "Minimum 45 minutes with full payload under standard atmospheric conditions.",
+        "required_value": "Minimum 45 minutes",
+        "normalized_required_value": 45,
+        "type": "numeric",
+        "category": "technical",
+        "mandatory": true,
+        "comparison_operator": ">=",
+        "units": "minutes",
+        "source": {
+          "page": 2,
+          "raw_snippet": "\u25cf\u200b Flight Time: Minimum 45 minutes with full payload under standard atmospheric conditions.",
+          "source_type": null
+        },
+        "confidence": "HIGH"
+      },
+      {
+        "criterion_id": "C013",
+        "name": "Data Link Encryption",
+        "description": "AES-256 bit encryption for the data link.",
+        "required_value": "AES-256 bit encryption",
+        "normalized_required_value": 256,
+        "type": "numeric",
+        "category": "technical",
+        "mandatory": true,
+        "comparison_operator": "==",
+        "units": "bit",
+        "source": {
+          "page": 2,
+          "raw_snippet": "\u25cf\u200b Encrypted Comms: AES-256 bit encryption for the data link.",
+          "source_type": null
+        },
+        "confidence": "HIGH"
+      },
+      {
+        "criterion_id": "CRIT_MANUAL_0570",
+        "name": "New Manual Criterion",
+        "category": "technical",
+        "required_value": "ISO certificate",
+        "type": "string",
+        "mandatory": true
+      }
+    ],
+    "evidence": [],
+    "evaluation": [],
+    "final_evaluation": [],
+    "field_mappings": [],
+    "verification": [],
+    "pii_masking": {},
+    "issues": [],
+    "pipeline_steps": []
+  },
+  "integrity": {
+    "algorithm": "SHA-256",
+    "hash": "d2f4aba23e712ba4d590c6ddc24764dd7885bf74cbe08255f72706cd732e0770",
+    "tamper_proof": true,
+    "generated_at": "2026-05-06T19:21:14.816709",
+    "disclaimer": "This audit log is machine-generated. Verify hash for tamper detection."
+  }
+}

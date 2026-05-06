@@ -90,4 +90,9 @@ export const SettingsAPI = {
   update: (body) => api.post('/settings', body),
 };
 
+// ── Chatbot ──
+export const ChatAPI = {
+  sendMessage: (message, context) => api.post('/chat', { message, context }).then(res => res.data),
+};
+
 export default api;
