@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useApp } from '../context/useApp';
 import VerdictBadge from '../components/VerdictBadge';
 import ConsolidatedGraphs from '../components/ConsolidatedGraphs';
+import { AlertTriangle, BarChart, CheckSquare, Square, XCircle, Hourglass, Zap, ClipboardList, Search, Lock, FileText, Table, RefreshCw } from 'lucide-react';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -158,7 +159,7 @@ export default function ConsolidatedReport() {
         <h1>Consolidated Report</h1>
         <div className="card">
           <div className="empty-state" style={{ padding: 40 }}>
-            <div className="icon">⚠️</div>
+            <div className="icon" style={{ color: 'var(--fail)', marginBottom: 16 }}><AlertTriangle size={48} /></div>
             <h3>No Project Selected</h3>
             <p>Select a project from the Dashboard first.</p>
           </div>
@@ -179,39 +180,40 @@ export default function ConsolidatedReport() {
       {/* Run Button OR Incremental Button */}
       {(!report || (report.bidder_results?.length < bidders.length)) && (
         <div className="card" style={{ marginBottom: 24 }}>
-          <div className="card-header"><h3>📊 Run Consolidated Evaluation</h3></div>
+          <div className="card-header"><h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}><BarChart size={20} /> Run Consolidated Evaluation</h3></div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <span>{tenderText ? '✅' : '⬜'}</span> Tender text extracted ({tenderText.length.toLocaleString()} chars)
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <span style={{ color: tenderText ? 'var(--pass)' : 'var(--text-muted)', display: 'flex' }}>{tenderText ? <CheckSquare size={16} /> : <Square size={16} />}</span> Tender text extracted ({tenderText.length.toLocaleString()} chars)
             </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <span>{bidders.length > 0 ? '✅' : '⬜'}</span> {bidders.length} bidder(s) registered
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <span style={{ color: bidders.length > 0 ? 'var(--pass)' : 'var(--text-muted)', display: 'flex' }}>{bidders.length > 0 ? <CheckSquare size={16} /> : <Square size={16} />}</span> {bidders.length} bidder(s) registered
             </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <span>{bidderData.length > 0 ? '✅' : '⬜'}</span> {bidderData.length} bidder document(s) extracted
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <span style={{ color: bidderData.length > 0 ? 'var(--pass)' : 'var(--text-muted)', display: 'flex' }}>{bidderData.length > 0 ? <CheckSquare size={16} /> : <Square size={16} />}</span> {bidderData.length} bidder document(s) extracted
             </div>
           </div>
 
-          {error && <div style={{ padding: '12px 16px', background: 'var(--fail-bg)', color: 'var(--fail)', borderRadius: 8, marginBottom: 12 }}>❌ {error}</div>}
-          {progress && <div style={{ padding: '12px 16px', background: 'var(--review-bg)', color: 'var(--review)', borderRadius: 8, marginBottom: 12 }}>⏳ {progress}</div>}
+          {error && <div style={{ padding: '12px 16px', background: 'var(--fail-bg)', color: 'var(--fail)', borderRadius: 8, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}><XCircle size={16} /> {error}</div>}
+          {progress && <div style={{ padding: '12px 16px', background: 'var(--review-bg)', color: 'var(--review)', borderRadius: 8, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}><Hourglass size={16} /> {progress}</div>}
 
           <div style={{ display: 'flex', gap: '12px' }}>
             <button
               className="btn btn-primary"
               onClick={handleRunConsolidated}
               disabled={!canRun || loading}
-              style={{ padding: '12px 32px', fontSize: '1rem', flex: 1 }}
+              style={{ padding: '12px 32px', fontSize: '1rem', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
             >
-              {loading ? '⚡ Running Evaluation Step-Wise...' : (!report ? `⚡ Evaluate All ${bidders.length} Bidders` : `⚡ Evaluate ${bidders.length - report.bidder_results.length} New Bidder(s)`)}
+              <Zap size={18} />
+              {loading ? 'Running Evaluation Step-Wise...' : (!report ? `Evaluate All ${bidders.length} Bidders` : `Evaluate ${bidders.length - report.bidder_results.length} New Bidder(s)`)}
             </button>
 
             {loading && (
               <button
                 className="btn btn-outline"
                 onClick={handleStopEvaluation}
-                style={{ padding: '12px 24px', fontSize: '1rem', color: 'var(--fail)', borderColor: 'var(--fail)', backgroundColor: 'transparent' }}
+                style={{ padding: '12px 24px', fontSize: '1rem', color: 'var(--fail)', borderColor: 'var(--fail)', backgroundColor: 'transparent', display: 'flex', alignItems: 'center', gap: 8 }}
               >
-                ⏹ Stop Evaluation
+                <Square size={18} /> Stop Evaluation
               </button>
             )}
           </div>
@@ -247,7 +249,7 @@ export default function ConsolidatedReport() {
           {/* Bidder Comparison Matrix */}
           <div className="card" style={{ marginBottom: 24, overflow: 'auto' }}>
             <div className="card-header">
-              <h3>📋 Bidder Comparison Matrix</h3>
+              <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}><ClipboardList size={20} /> Bidder Comparison Matrix</h3>
               <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                 Rows = Criteria, Columns = Bidders
               </span>
@@ -304,7 +306,7 @@ export default function ConsolidatedReport() {
           {/* Per-Bidder Detail Cards */}
           <div className="card" style={{ marginBottom: 24 }}>
             <div className="card-header">
-              <h3>🔍 Bidder Details</h3>
+              <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Search size={20} /> Bidder Details</h3>
               <div style={{ display: 'flex', gap: 8 }}>
                 {report.bidder_results.map((b) => (
                   <button
@@ -366,10 +368,13 @@ export default function ConsolidatedReport() {
                   {/* Verification */}
                   {b.verification?.length > 0 && (
                     <div style={{ marginTop: 12 }}>
-                      <h4 style={{ fontSize: '0.85rem', marginBottom: 8 }}>🔐 Identifier Verification</h4>
+                      <h4 style={{ fontSize: '0.85rem', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}><Lock size={16} /> Identifier Verification</h4>
                       {b.verification.map((v, i) => (
-                        <div key={i} style={{ fontSize: '0.8rem', marginBottom: 4 }}>
-                          {v.status === 'FORMAT_VALID' ? '✅' : '❌'} <strong>{v.identifier_type}</strong>: {v.identifier} — {v.details}
+                        <div key={i} style={{ fontSize: '0.8rem', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ color: v.status === 'FORMAT_VALID' ? 'var(--pass)' : 'var(--fail)', display: 'flex' }}>
+                            {v.status === 'FORMAT_VALID' ? <CheckSquare size={14} /> : <XCircle size={14} />}
+                          </span>
+                          <strong>{v.identifier_type}</strong>: {v.identifier} — {v.details}
                         </div>
                       ))}
                     </div>
@@ -378,7 +383,7 @@ export default function ConsolidatedReport() {
                   {/* Issues */}
                   {b.issues?.length > 0 && (
                     <div style={{ marginTop: 12 }}>
-                      <h4 style={{ fontSize: '0.85rem', marginBottom: 8 }}>⚠️ Vigilance Alerts</h4>
+                      <h4 style={{ fontSize: '0.85rem', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6, color: 'var(--fail)' }}><AlertTriangle size={16} /> Vigilance Alerts</h4>
                       {b.issues.map((issue, i) => (
                         <div key={i} style={{ fontSize: '0.8rem', marginBottom: 4, padding: '4px 8px', background: issue.severity === 'HIGH' ? '#fecaca' : '#fef3c7', borderRadius: 4 }}>
                           [{issue.severity}] {issue.issue_type}: {issue.reason}
@@ -395,6 +400,7 @@ export default function ConsolidatedReport() {
           <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 24, flexWrap: 'wrap' }}>
             <button
               className="btn btn-primary"
+              style={{ display: 'flex', alignItems: 'center', gap: 8 }}
               onClick={async () => {
                 try {
                   const res = await fetch(`${API}/api/export/consolidated`, {
@@ -406,10 +412,11 @@ export default function ConsolidatedReport() {
                 } catch (err) { alert('Export failed: ' + err.message); }
               }}
             >
-              📄 Export Consolidated PDF
+              <FileText size={16} /> Export Consolidated PDF
             </button>
             <button
               className="btn btn-outline"
+              style={{ display: 'flex', alignItems: 'center', gap: 8 }}
               onClick={async () => {
                 try {
                   const res = await fetch(`${API}/api/export/excel`, {
@@ -421,10 +428,11 @@ export default function ConsolidatedReport() {
                 } catch (err) { alert('Export failed: ' + err.message); }
               }}
             >
-              📊 Export Matrix (XLSX)
+              <Table size={16} /> Export Matrix (XLSX)
             </button>
             <button
               className="btn btn-outline"
+              style={{ display: 'flex', alignItems: 'center', gap: 8 }}
               onClick={async () => {
                 try {
                   const res = await fetch(`${API}/api/export/audit`, {
@@ -436,10 +444,10 @@ export default function ConsolidatedReport() {
                 } catch (err) { alert('Export failed: ' + err.message); }
               }}
             >
-              🔐 Export Audit Log (JSON)
+              <Lock size={16} /> Export Audit Log (JSON)
             </button>
-            <button className="btn btn-secondary" onClick={() => { setReport(null); setSelectedBidder(null); }}>
-              🔄 Re-run Evaluation
+            <button className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: 8 }} onClick={() => { setReport(null); setSelectedBidder(null); }}>
+              <RefreshCw size={16} /> Re-run Evaluation
             </button>
           </div>
         </>

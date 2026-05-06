@@ -1,0 +1,176 @@
+{
+  "audit_metadata": {
+    "evaluation_id": "EVAL-D576405B",
+    "timestamp": "2026-05-06T15:02:03.234990",
+    "model_version": "InferX v2.0",
+    "pipeline_version": "7-step",
+    "provider": "unknown",
+    "sha256_hash": "c0e10e93c0ed8613461e955ad20fdacfa21a15055665efd1cb132f7bc04b9dd9",
+    "criteria_count": 8,
+    "evidence_count": 0,
+    "issues_count": 0
+  },
+  "evaluation_data": {
+    "criteria": [
+      {
+        "criterion_id": "C001",
+        "name": "Manufacturer / Bidder",
+        "description": "Only manufacturers or bidders of the offered stores are eligible",
+        "required_value": null,
+        "normalized_required_value": null,
+        "type": "boolean",
+        "category": "technical",
+        "mandatory": true,
+        "comparison_operator": null,
+        "units": null,
+        "source": {
+          "page": 10,
+          "raw_snippet": "Only those firms should respond who are manufacturers / bidders of the offered stores",
+          "source_type": null
+        },
+        "confidence": "HIGH"
+      },
+      {
+        "criterion_id": "C002",
+        "name": "Industrial License",
+        "description": "Firm must have Industrial License for manufacturing of Thermal imaging equipment for military use from DIPP",
+        "required_value": null,
+        "normalized_required_value": null,
+        "type": "document",
+        "category": "technical",
+        "mandatory": true,
+        "comparison_operator": null,
+        "units": null,
+        "source": {
+          "page": 10,
+          "raw_snippet": "Firms should have Industrial License for manufacturing of Thermal imaging equipment for military use from DIPP.",
+          "source_type": null
+        },
+        "confidence": "HIGH"
+      },
+      {
+        "criterion_id": "C003",
+        "name": "Past Supply Experience",
+        "description": "Firm must have supplied 10% (20 No) of the tender quantity of same or any Thermal Cameras, HITT and Thermal Weapon Sight to any Central / State Govt Organization / PSU / Public Listed company in any of the last three years",
+        "required_value": "20 No",
+        "normalized_required_value": 20,
+        "type": "numeric",
+        "category": "technical",
+        "mandatory": true,
+        "comparison_operator": ">=",
+        "units": "number",
+        "source": {
+          "page": 10,
+          "raw_snippet": "Firms should have supplied 10% (20 No) of the tender quantity of same or any Thermal Cameras, HITT and Thermal Weapon Sight to any Central / State Govt Organization / PSU / Public Listed company in any of the last three years before the opening the tender as per Appendix -12 of TE.",
+          "source_type": null
+        },
+        "confidence": "HIGH"
+      },
+      {
+        "criterion_id": "C004",
+        "name": "Annual Turnover",
+        "description": "Minimum annual turnover requirement",
+        "required_value": "2 crore",
+        "normalized_required_value": 20000000,
+        "type": "numeric",
+        "category": "financial",
+        "mandatory": true,
+        "comparison_operator": ">=",
+        "units": "INR",
+        "source": {
+          "page": 10,
+          "raw_snippet": "The required average annual turnover of the bidder during last 3 financial years i.e. upto 31/03/2024 should be 02 Crore.",
+          "source_type": null
+        },
+        "confidence": "HIGH"
+      },
+      {
+        "criterion_id": "C005",
+        "name": "Tender Sample",
+        "description": "Firm must submit one tender sample for evaluation during STEC-cum-Field-Trial",
+        "required_value": null,
+        "normalized_required_value": null,
+        "type": "document",
+        "category": "technical",
+        "mandatory": true,
+        "comparison_operator": null,
+        "units": null,
+        "source": {
+          "page": 18,
+          "raw_snippet": "One Tender Sample from each Firm will be required for evaluation purpose during STEC-cum-Field-Trial.",
+          "source_type": null
+        },
+        "confidence": "HIGH"
+      },
+      {
+        "criterion_id": "C006",
+        "name": "Bid Security Declaration",
+        "description": "Firm must submit Bid Security Declaration Certificate as per Appendix-3",
+        "required_value": null,
+        "normalized_required_value": null,
+        "type": "document",
+        "category": "compliance",
+        "mandatory": true,
+        "comparison_operator": null,
+        "units": null,
+        "source": {
+          "page": 7,
+          "raw_snippet": "Bid Security Declaration Certificate is required to be submitted by MSE/Startups as per Appendix-3",
+          "source_type": null
+        },
+        "confidence": "HIGH"
+      },
+      {
+        "criterion_id": "C007",
+        "name": "Earnest Money Deposit (EMD)",
+        "description": "Firm must submit EMD of Rs. 35,36,000/-",
+        "required_value": "35,36,000",
+        "normalized_required_value": 35360000,
+        "type": "numeric",
+        "category": "compliance",
+        "mandatory": false,
+        "comparison_operator": "==",
+        "units": "INR",
+        "source": {
+          "page": 7,
+          "raw_snippet": "Bidder is required to submit Earnest Money Deposit in original a sum of Rs. 35,36,000/- shall be valid for 225 days from the date of opening of tender (if applicable) (as per Appendix 2).",
+          "source_type": null
+        },
+        "confidence": "HIGH"
+      },
+      {
+        "criterion_id": "C008",
+        "name": "Undertaking on Liquidation",
+        "description": "Firm must submit undertaking that it is not under liquidation, court receivership or similar proceedings, and is not bankrupt",
+        "required_value": null,
+        "normalized_required_value": null,
+        "type": "document",
+        "category": "compliance",
+        "mandatory": true,
+        "comparison_operator": null,
+        "units": null,
+        "source": {
+          "page": 20,
+          "raw_snippet": "The bidders should not be under liquidation, court receivership or similar proceedings, should not be bankrupt. Bidders are required to upload undertaking to this effect along with the Bid.",
+          "source_type": null
+        },
+        "confidence": "HIGH"
+      }
+    ],
+    "evidence": [],
+    "evaluation": [],
+    "final_evaluation": [],
+    "field_mappings": [],
+    "verification": [],
+    "pii_masking": {},
+    "issues": [],
+    "pipeline_steps": []
+  },
+  "integrity": {
+    "algorithm": "SHA-256",
+    "hash": "c0e10e93c0ed8613461e955ad20fdacfa21a15055665efd1cb132f7bc04b9dd9",
+    "tamper_proof": true,
+    "generated_at": "2026-05-06T15:02:03.234990",
+    "disclaimer": "This audit log is machine-generated. Verify hash for tamper detection."
+  }
+}

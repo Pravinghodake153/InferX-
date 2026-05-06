@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { SandboxAPI } from '../services/api';
 import { useApp } from '../context/useApp';
 import DataTable from '../components/DataTable';
-import { Edit3, Upload, CheckCircle, Search, ClipboardList, FolderKanban, Trash2 } from 'lucide-react';
+import { Edit3, Upload, CheckCircle, Search, ClipboardList, FolderKanban, Trash2, XCircle } from 'lucide-react';
 import { auth } from '../services/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 
@@ -184,7 +184,7 @@ export default function Dashboard() {
               Cancel
             </button>
           </div>
-          {authError && <div style={{ color: 'var(--fail)', marginTop: 8, fontSize: '0.85rem' }}>❌ {authError}</div>}
+          {authError && <div style={{ color: 'var(--fail)', marginTop: 8, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 6 }}><XCircle size={14} /> {authError}</div>}
         </div>
       )}
 
