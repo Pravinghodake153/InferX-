@@ -72,6 +72,9 @@ chmod +x run_frontend.sh
 ./run_frontend.sh
 Frontend runs on http://localhost:5173
 
-Key Technical Decisions & Trade-offs (Must read)
+# Key Technical Decisions & Trade-offs (Must read)
+for privacy reason the API details are not provided you need to add API keys manually by creating .env
+after API integration system works on its potential as expected. 
+
 Reasoning Models vs Fast Extractors: We support DeepSeek-R1 (Reasoning) but actively strip the <think> tags using custom regex parsers to prevent Pydantic schema crashes. We recommend using fast-extraction models (Gemini 2.5 Flash / DeepSeek V3) for production speed.
 Chunking Strategy: To preserve the context of legal conditions, we bypass traditional chunking and utilize the massive context windows (up to 2M tokens) of modern models, passing entire documents in single payloads.
