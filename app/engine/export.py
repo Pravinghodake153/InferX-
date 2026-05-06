@@ -298,7 +298,8 @@ def generate_pdf_report(data: Dict[str, Any], output_path: str) -> str:
             ))
 
     # ── Verification ──
-    verifications = data.get("verification", [])
+    # Support both singular and plural keys for verification data
+    verifications = data.get("verification", []) + data.get("verifications", [])
     if verifications:
         content.append(Spacer(1, 4 * mm))
         content.append(HRFlowable(width="100%", color=ACCENT_BLUE, thickness=1))
@@ -631,9 +632,11 @@ def generate_excel_report(data: Dict[str, Any], output_path: str) -> str:
         cell.fill = HEADER_FILL
         cell.font = HEADER_FONT
 
-    all_verifications = data.get("verification", [])
+    # Aggregate verification data from both possible keys
+    all_verifications = data.get("verification", []) + data.get("verifications", [])
     for br in bidder_results:
         all_verifications.extend(br.get("verification", []))
+        all_verifications.extend(br.get("verifications", []))
     for v in all_verifications:
         ws_ver.append([
             v.get("identifier", ""),
