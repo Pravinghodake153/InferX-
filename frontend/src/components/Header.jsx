@@ -4,11 +4,14 @@ import { Landmark, Moon, Sun, Menu } from 'lucide-react';
 
 export default function Header() {
   const { toggleSidebar, sidebarCollapsed, selectedProject } = useApp();
-  const [theme, setTheme] = useState('light');
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem('inferx_theme') || 'light';
+  });
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     document.body.className = theme;
+    localStorage.setItem('inferx_theme', theme);
   }, [theme]);
 
   const toggleTheme = () => setTheme(t => t === 'light' ? 'dark' : 'light');

@@ -222,12 +222,7 @@ export default function ReviewCorrection() {
 
   // ── Mask toggle ──
   const handleMaskToggle = () => {
-    if (maskEnabled) { setOfficerPrompt(true); } // turning OFF requires officer ID
-    else { setMaskEnabled(true); }
-  };
-  const confirmUnmask = () => {
-    if (officerInput.trim().length < 2) return;
-    setMaskEnabled(false); setOfficerPrompt(false); setOfficerInput('');
+    setMaskEnabled(!maskEnabled);
   };
 
   // ── Fullscreen (new tab) ──
@@ -309,20 +304,7 @@ export default function ReviewCorrection() {
         )}
       </div>
 
-      {/* ── Officer ID Prompt (modal) ── */}
-      {officerPrompt && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div className="card" style={{ padding: 24, maxWidth: 360, width: '90%' }}>
-            <h3 style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: '8px' }}><Unlock size={20} /> Unmask PII — Officer Confirmation</h3>
-            <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: 12 }}>Enter your Officer ID to reveal masked data. This action is audit-logged.</p>
-            <input className="input" placeholder="Officer ID (e.g. OFF-001)" value={officerInput} onChange={e => setOfficerInput(e.target.value)} autoFocus />
-            <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
-              <button className="btn btn-primary" onClick={confirmUnmask} disabled={officerInput.trim().length < 2}>Confirm & Reveal</button>
-              <button className="btn btn-secondary" onClick={() => { setOfficerPrompt(false); setOfficerInput(''); }}>Cancel</button>
-            </div>
-          </div>
-        </div>
-      )}
+
 
       {/* ── THREE PANEL LAYOUT ── */}
       <div style={{ display: 'grid', gridTemplateColumns: showOriginal ? '1fr 1.2fr 320px' : '1fr 320px', gap: 12, flex: 1, minHeight: 0, transition: 'grid-template-columns 0.2s ease' }}>
@@ -337,7 +319,7 @@ export default function ReviewCorrection() {
               <button className="btn btn-sm btn-secondary" onClick={() => setShowOriginal(false)} title="Hide Panel">◀</button>
             </div>
           </div>
-          <div style={{ flex: 1, overflow: 'auto', background: '#f8fafc', padding: viewMode === 'image' ? 12 : 0 }}>
+          <div style={{ flex: 1, overflow: 'auto', background: 'var(--bg-primary)', padding: viewMode === 'image' ? 12 : 0 }}>
             {viewMode === 'image' ? (
               /* Image mode: show extracted image grid */
               allImages.length > 0 ? (
@@ -381,7 +363,7 @@ export default function ReviewCorrection() {
               <h3 style={{ fontSize: '0.85rem', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>{viewMode === 'text' ? <><BarChart2 size={16} /> Extracted Text</> : <><Search size={16} /> Image OCR Text</>}</h3>
             </div>
           </div>
-          <div style={{ flex: 1, padding: 14, overflowY: 'auto', background: '#fff' }} onMouseUp={handleMouseUp}>
+          <div style={{ flex: 1, padding: 14, overflowY: 'auto', background: 'var(--bg-primary)' }} onMouseUp={handleMouseUp}>
 
             {noData && <div className="empty-state" style={{ border: 'none', marginTop: 40 }}><p>No extraction data. Run extraction from Upload page.</p></div>}
 
@@ -437,13 +419,13 @@ export default function ReviewCorrection() {
           <div className="card-header" style={{ background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-color)', padding: '10px 14px' }}>
             <h3 style={{ fontSize: '0.85rem', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}><Settings size={16} /> Actions</h3>
           </div>
-          <div style={{ flex: 1, padding: 14, overflowY: 'auto', background: '#fff' }}>
+          <div style={{ flex: 1, padding: 14, overflowY: 'auto', background: 'var(--bg-primary)' }}>
 
             <button className="btn btn-secondary" style={{ width: '100%', marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '10px 0', border: '1px dashed var(--accent)', color: 'var(--accent)', background: 'var(--accent-light)' }} onClick={handleAutoMask}>
               <Sparkles size={16} /> Auto-Detect PII
             </button>
-            <div style={{ padding: '8px 10px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 4, marginBottom: 16 }}>
-              <p style={{ margin: 0, fontSize: '0.7rem', color: '#92400e', display: 'flex', gap: 6 }}>
+            <div style={{ padding: '8px 10px', background: 'var(--review-bg)', border: '1px solid var(--review)', borderRadius: 4, marginBottom: 16 }}>
+              <p style={{ margin: 0, fontSize: '0.7rem', color: 'var(--review)', display: 'flex', gap: 6 }}>
                 <span><AlertTriangle size={16} className="text-warning" /></span>
                 <span><strong>Disclaimer:</strong> Only personal information (PII) should be masked. If you mask other data (like financial numbers or dates), the AI cannot see the data and will be forced to return a <strong>REVIEW REQUIRED</strong> verdict.</span>
               </p>

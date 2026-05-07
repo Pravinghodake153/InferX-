@@ -201,7 +201,7 @@ export default function TenderSetup() {
                       whiteSpace: 'pre-wrap', lineHeight: 1.5,
                       maxHeight: 200, overflow: 'auto',
                       padding: '6px 8px', marginTop: 8,
-                      background: '#f8fafc', borderRadius: 'var(--radius-sm)',
+                      background: 'var(--bg-primary)', borderRadius: 'var(--radius-sm)',
                       border: '1px solid var(--border-color)',
                     }}>
                       {bd.extracted_text}
@@ -371,8 +371,8 @@ export default function TenderSetup() {
       {/* Proceed Button */}
       <button
         className="btn btn-primary"
-        onClick={handleProceedToReview}
-        disabled={!locked}
+        onClick={locked ? handleProceedToReview : handleLockSchema}
+        disabled={criteria.length === 0}
         style={{ padding: '12px 32px', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}
       >
         {locked ? <><ClipboardList size={18} /> Proceed to Review & Correct →</> : <><Lock size={18} /> Lock Schema First</>}

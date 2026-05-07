@@ -1,5 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { AppContext } from './appContextValue';
+import { db } from '../services/firebase';
+import { collection, doc, setDoc, getDocs, deleteDoc } from 'firebase/firestore';
 
 // ── localStorage keys ──
 const LS_PROJECTS = 'inferx_projects';
@@ -96,16 +98,43 @@ export function AppProvider({ children }) {
   // Hydration is handled in the lazy initializer above, so always true
   const hydrated = true;
 
-  // ── Persist projects to localStorage on every change ──
+  // ── Persist projects to localStorage and Firestore on every change ──
   useEffect(() => {
     if (!hydrated) return;
     try {
       const serialized = projects.map(serializeProject);
       localStorage.setItem(LS_PROJECTS, JSON.stringify(serialized));
+      
+      // Also sync to Firestore
+      serialized.forEach(async (p) => {
+        try {
+          await setDoc(doc(db, 'projects', p.id), p);
+        } catch (e) {
+          console.warn('Firestore sync failed for project:', p.id, e);
+        }
+      });
     } catch (e) {
       console.warn('Failed to save projects:', e);
     }
   }, [projects, hydrated]);
+
+  // ── Fetch from Firestore on initial load ──
+  useEffect(() => {
+    const fetchRemote = async () => {
+      try {
+        const snapshot = await getDocs(collection(db, 'projects'));
+        if (!snapshot.empty) {
+          const fetched = snapshot.docs.map(d => d.data());
+          // Sort by createdAt desc
+          fetched.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+          setProjects(fetched);
+        }
+      } catch (e) {
+        console.warn('Failed to fetch projects from Firestore:', e);
+      }
+    };
+    fetchRemote();
+  }, []);
 
   // ── Persist selectedProjectId ──
   useEffect(() => {
@@ -172,9 +201,14 @@ export function AppProvider({ children }) {
     setProjects(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
   }, []);
 
-  const deleteProject = useCallback((id) => {
+  const deleteProject = useCallback(async (id) => {
     setProjects(prev => prev.filter(p => p.id !== id));
     if (selectedProjectId === id) setSelectedProjectId(null);
+    try {
+      await deleteDoc(doc(db, 'projects', id));
+    } catch (e) {
+      console.warn('Failed to delete project from Firestore:', e);
+    }
   }, [selectedProjectId]);
 
   const selectedProject = projects.find(p => p.id === selectedProjectId) || null;

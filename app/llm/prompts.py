@@ -45,12 +45,15 @@ For each criterion:
 - Identify comparison operator (>=, <=, ==, etc.)
 - Extract exact source page and raw snippet
 - Normalize values when possible (Crore → integer, Lakh → integer)
+- IMPORTANT: Use a strictly incremental 6-character ID format starting with "C" (e.g., "C00001", "C00002", etc.).
+- IMPORTANT: Criteria IDs MUST be completely unique. Do not repeat criteria.
+- IMPORTANT: You MUST populate the `required_value` field as accurately as possible based on the document. Do not leave it blank if the text contains a threshold, value, or specific document requirement.
 
 Return ONLY valid JSON matching the following schema structure:
 {{
   "criteria": [
     {{
-      "criterion_id": "C001",
+      "criterion_id": "C00001",
       "name": "Annual Turnover",
       "description": "Minimum turnover requirement",
       "required_value": "5 crore",

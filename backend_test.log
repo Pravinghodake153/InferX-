@@ -641,3 +641,199 @@ https://github.com/google-gemini/deprecated-generative-ai-python/blob/main/READM
 INFO:     Started server process [82943]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'app/ingestion/pdf.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [82943]
+/Users/pravinghodake/Desktop/Projects/AI for Bharat/Prototype/InferX/venv/lib/python3.9/site-packages/google/api_core/_python_version_support.py:242: FutureWarning: You are using a non-supported Python version (3.9.6). Google will not post any further updates to google.api_core supporting this Python version. Please upgrade to the latest Python version, or at least Python 3.10, and then update google.api_core.
+  warnings.warn(message, FutureWarning)
+/Users/pravinghodake/Desktop/Projects/AI for Bharat/Prototype/InferX/venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+/Users/pravinghodake/Desktop/Projects/AI for Bharat/Prototype/InferX/venv/lib/python3.9/site-packages/google/auth/__init__.py:54: FutureWarning: You are using a Python version 3.9 past its end of life. Google will update google-auth with critical bug fixes on a best-effort basis, but not with any other fixes or features. Please upgrade your Python version, and then update google-auth.
+  warnings.warn(eol_message.format("3.9"), FutureWarning)
+/Users/pravinghodake/Desktop/Projects/AI for Bharat/Prototype/InferX/venv/lib/python3.9/site-packages/google/oauth2/__init__.py:40: FutureWarning: You are using a Python version 3.9 past its end of life. Google will update google-auth with critical bug fixes on a best-effort basis, but not with any other fixes or features. Please upgrade your Python version, and then update google-auth.
+  warnings.warn(eol_message.format("3.9"), FutureWarning)
+/Users/pravinghodake/Desktop/Projects/AI for Bharat/Prototype/InferX/app/llm/client.py:17: FutureWarning: 
+
+All support for the `google.generativeai` package has ended. It will no longer be receiving 
+updates or bug fixes. Please switch to the `google.genai` package as soon as possible.
+See README for more details:
+
+https://github.com/google-gemini/deprecated-generative-ai-python/blob/main/README.md
+
+  import google.generativeai as genai
+INFO:     Started server process [16644]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'app/llm/client.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [16644]
+/Users/pravinghodake/Desktop/Projects/AI for Bharat/Prototype/InferX/venv/lib/python3.9/site-packages/google/api_core/_python_version_support.py:242: FutureWarning: You are using a non-supported Python version (3.9.6). Google will not post any further updates to google.api_core supporting this Python version. Please upgrade to the latest Python version, or at least Python 3.10, and then update google.api_core.
+  warnings.warn(message, FutureWarning)
+/Users/pravinghodake/Desktop/Projects/AI for Bharat/Prototype/InferX/venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+/Users/pravinghodake/Desktop/Projects/AI for Bharat/Prototype/InferX/venv/lib/python3.9/site-packages/google/auth/__init__.py:54: FutureWarning: You are using a Python version 3.9 past its end of life. Google will update google-auth with critical bug fixes on a best-effort basis, but not with any other fixes or features. Please upgrade your Python version, and then update google-auth.
+  warnings.warn(eol_message.format("3.9"), FutureWarning)
+/Users/pravinghodake/Desktop/Projects/AI for Bharat/Prototype/InferX/venv/lib/python3.9/site-packages/google/oauth2/__init__.py:40: FutureWarning: You are using a Python version 3.9 past its end of life. Google will update google-auth with critical bug fixes on a best-effort basis, but not with any other fixes or features. Please upgrade your Python version, and then update google-auth.
+  warnings.warn(eol_message.format("3.9"), FutureWarning)
+/Users/pravinghodake/Desktop/Projects/AI for Bharat/Prototype/InferX/app/llm/client.py:17: FutureWarning: 
+
+All support for the `google.generativeai` package has ended. It will no longer be receiving 
+updates or bug fixes. Please switch to the `google.genai` package as soon as possible.
+See README for more details:
+
+https://github.com/google-gemini/deprecated-generative-ai-python/blob/main/README.md
+
+  import google.generativeai as genai
+INFO:     Started server process [16886]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'app/api.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [16886]
+/Users/pravinghodake/Desktop/Projects/AI for Bharat/Prototype/InferX/venv/lib/python3.9/site-packages/google/api_core/_python_version_support.py:242: FutureWarning: You are using a non-supported Python version (3.9.6). Google will not post any further updates to google.api_core supporting this Python version. Please upgrade to the latest Python version, or at least Python 3.10, and then update google.api_core.
+  warnings.warn(message, FutureWarning)
+/Users/pravinghodake/Desktop/Projects/AI for Bharat/Prototype/InferX/venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+/Users/pravinghodake/Desktop/Projects/AI for Bharat/Prototype/InferX/venv/lib/python3.9/site-packages/google/auth/__init__.py:54: FutureWarning: You are using a Python version 3.9 past its end of life. Google will update google-auth with critical bug fixes on a best-effort basis, but not with any other fixes or features. Please upgrade your Python version, and then update google-auth.
+  warnings.warn(eol_message.format("3.9"), FutureWarning)
+/Users/pravinghodake/Desktop/Projects/AI for Bharat/Prototype/InferX/venv/lib/python3.9/site-packages/google/oauth2/__init__.py:40: FutureWarning: You are using a Python version 3.9 past its end of life. Google will update google-auth with critical bug fixes on a best-effort basis, but not with any other fixes or features. Please upgrade your Python version, and then update google-auth.
+  warnings.warn(eol_message.format("3.9"), FutureWarning)
+/Users/pravinghodake/Desktop/Projects/AI for Bharat/Prototype/InferX/app/llm/client.py:17: FutureWarning: 
+
+All support for the `google.generativeai` package has ended. It will no longer be receiving 
+updates or bug fixes. Please switch to the `google.genai` package as soon as possible.
+See README for more details:
+
+https://github.com/google-gemini/deprecated-generative-ai-python/blob/main/README.md
+
+  import google.generativeai as genai
+INFO:     Started server process [17060]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'app/pipeline.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [17060]
+/Users/pravinghodake/Desktop/Projects/AI for Bharat/Prototype/InferX/venv/lib/python3.9/site-packages/google/api_core/_python_version_support.py:242: FutureWarning: You are using a non-supported Python version (3.9.6). Google will not post any further updates to google.api_core supporting this Python version. Please upgrade to the latest Python version, or at least Python 3.10, and then update google.api_core.
+  warnings.warn(message, FutureWarning)
+/Users/pravinghodake/Desktop/Projects/AI for Bharat/Prototype/InferX/venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+/Users/pravinghodake/Desktop/Projects/AI for Bharat/Prototype/InferX/venv/lib/python3.9/site-packages/google/auth/__init__.py:54: FutureWarning: You are using a Python version 3.9 past its end of life. Google will update google-auth with critical bug fixes on a best-effort basis, but not with any other fixes or features. Please upgrade your Python version, and then update google-auth.
+  warnings.warn(eol_message.format("3.9"), FutureWarning)
+/Users/pravinghodake/Desktop/Projects/AI for Bharat/Prototype/InferX/venv/lib/python3.9/site-packages/google/oauth2/__init__.py:40: FutureWarning: You are using a Python version 3.9 past its end of life. Google will update google-auth with critical bug fixes on a best-effort basis, but not with any other fixes or features. Please upgrade your Python version, and then update google-auth.
+  warnings.warn(eol_message.format("3.9"), FutureWarning)
+/Users/pravinghodake/Desktop/Projects/AI for Bharat/Prototype/InferX/app/llm/client.py:17: FutureWarning: 
+
+All support for the `google.generativeai` package has ended. It will no longer be receiving 
+updates or bug fixes. Please switch to the `google.genai` package as soon as possible.
+See README for more details:
+
+https://github.com/google-gemini/deprecated-generative-ai-python/blob/main/README.md
+
+  import google.generativeai as genai
+INFO:     Started server process [18106]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'app/llm/prompts.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [18106]
+/Users/pravinghodake/Desktop/Projects/AI for Bharat/Prototype/InferX/venv/lib/python3.9/site-packages/google/api_core/_python_version_support.py:242: FutureWarning: You are using a non-supported Python version (3.9.6). Google will not post any further updates to google.api_core supporting this Python version. Please upgrade to the latest Python version, or at least Python 3.10, and then update google.api_core.
+  warnings.warn(message, FutureWarning)
+/Users/pravinghodake/Desktop/Projects/AI for Bharat/Prototype/InferX/venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+/Users/pravinghodake/Desktop/Projects/AI for Bharat/Prototype/InferX/venv/lib/python3.9/site-packages/google/auth/__init__.py:54: FutureWarning: You are using a Python version 3.9 past its end of life. Google will update google-auth with critical bug fixes on a best-effort basis, but not with any other fixes or features. Please upgrade your Python version, and then update google-auth.
+  warnings.warn(eol_message.format("3.9"), FutureWarning)
+/Users/pravinghodake/Desktop/Projects/AI for Bharat/Prototype/InferX/venv/lib/python3.9/site-packages/google/oauth2/__init__.py:40: FutureWarning: You are using a Python version 3.9 past its end of life. Google will update google-auth with critical bug fixes on a best-effort basis, but not with any other fixes or features. Please upgrade your Python version, and then update google-auth.
+  warnings.warn(eol_message.format("3.9"), FutureWarning)
+/Users/pravinghodake/Desktop/Projects/AI for Bharat/Prototype/InferX/app/llm/client.py:17: FutureWarning: 
+
+All support for the `google.generativeai` package has ended. It will no longer be receiving 
+updates or bug fixes. Please switch to the `google.genai` package as soon as possible.
+See README for more details:
+
+https://github.com/google-gemini/deprecated-generative-ai-python/blob/main/README.md
+
+  import google.generativeai as genai
+INFO:     Started server process [18401]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:64011 - "GET /api/sandbox/tenders HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64011 - "GET /api/sandbox/tenders HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64053 - "GET /api/sandbox/tenders HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64053 - "GET /api/sandbox/tenders HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64053 - "GET /api/settings HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64055 - "GET /api/settings HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64053 - "GET /api/audit/verify HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64055 - "GET /api/audit/verify HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64057 - "GET /api/audit/logs?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64055 - "GET /api/audit/logs?limit=10 HTTP/1.1" 200 OK
+WARNING:  StatReload detected changes in 'app/api.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [18401]
+/Users/pravinghodake/Desktop/Projects/AI for Bharat/Prototype/InferX/venv/lib/python3.9/site-packages/google/api_core/_python_version_support.py:242: FutureWarning: You are using a non-supported Python version (3.9.6). Google will not post any further updates to google.api_core supporting this Python version. Please upgrade to the latest Python version, or at least Python 3.10, and then update google.api_core.
+  warnings.warn(message, FutureWarning)
+/Users/pravinghodake/Desktop/Projects/AI for Bharat/Prototype/InferX/venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+/Users/pravinghodake/Desktop/Projects/AI for Bharat/Prototype/InferX/venv/lib/python3.9/site-packages/google/auth/__init__.py:54: FutureWarning: You are using a Python version 3.9 past its end of life. Google will update google-auth with critical bug fixes on a best-effort basis, but not with any other fixes or features. Please upgrade your Python version, and then update google-auth.
+  warnings.warn(eol_message.format("3.9"), FutureWarning)
+/Users/pravinghodake/Desktop/Projects/AI for Bharat/Prototype/InferX/venv/lib/python3.9/site-packages/google/oauth2/__init__.py:40: FutureWarning: You are using a Python version 3.9 past its end of life. Google will update google-auth with critical bug fixes on a best-effort basis, but not with any other fixes or features. Please upgrade your Python version, and then update google-auth.
+  warnings.warn(eol_message.format("3.9"), FutureWarning)
+/Users/pravinghodake/Desktop/Projects/AI for Bharat/Prototype/InferX/app/llm/client.py:17: FutureWarning: 
+
+All support for the `google.generativeai` package has ended. It will no longer be receiving 
+updates or bug fixes. Please switch to the `google.genai` package as soon as possible.
+See README for more details:
+
+https://github.com/google-gemini/deprecated-generative-ai-python/blob/main/README.md
+
+  import google.generativeai as genai
+INFO:     Started server process [27282]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:64131 - "GET /api/settings HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64131 - "GET /api/settings HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64131 - "GET /api/audit/verify HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64133 - "GET /api/audit/logs?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64131 - "GET /api/audit/verify HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64135 - "GET /api/audit/logs?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64206 - "GET /api/settings HTTP/1.1" 200 OK
+[LLM] Provider switched to: openrouter, Model: anthropic/claude-3-haiku, Context Size: 150000
+INFO:     127.0.0.1:64220 - "POST /api/settings HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64254 - "GET /api/settings HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64254 - "GET /api/settings HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64256 - "GET /api/audit/verify HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64258 - "GET /api/audit/logs?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64256 - "GET /api/audit/verify HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64254 - "GET /api/audit/logs?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64263 - "GET /api/settings HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64275 - "GET /api/settings HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64275 - "GET /api/settings HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64275 - "GET /api/audit/verify HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64275 - "GET /api/audit/verify HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64277 - "GET /api/audit/logs?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64275 - "GET /api/audit/logs?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64279 - "GET /api/settings HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64279 - "GET /api/settings HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64284 - "GET /api/audit/verify HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64286 - "GET /api/audit/logs?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64284 - "GET /api/audit/verify HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64279 - "GET /api/audit/logs?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64292 - "GET /api/sandbox/tenders HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64292 - "GET /api/sandbox/tenders HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64294 - "GET /api/settings HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64294 - "GET /api/settings HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64302 - "GET /api/audit/verify HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64304 - "GET /api/audit/logs?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64304 - "GET /api/audit/verify HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64302 - "GET /api/audit/logs?limit=10 HTTP/1.1" 200 OK

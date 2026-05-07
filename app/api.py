@@ -144,16 +144,22 @@ def _extract_document_payload(file_path: str, filename: str):
 class ProviderRequest(BaseModel):
     provider: str
     model: Optional[str] = None
+    context_size: Optional[int] = None
+    sandbox_api_url: Optional[str] = None
+    sandbox_api_key: Optional[str] = None
 
 @app.get("/api/settings")
 async def get_settings():
     """Return current LLM provider setting and key status."""
     from dotenv import load_dotenv as _reload_env
-    from app.llm.client import get_model
+    from app.llm.client import get_model, get_context_size
     _reload_env(override=True)
     return {
         "provider": get_provider(),
         "model": get_model(),
+        "context_size": get_context_size(),
+        "sandbox_api_url": os.getenv("SANDBOX_API_URL", ""),
+        "sandbox_api_key": os.getenv("SANDBOX_API_KEY", ""),
         "available": ["openrouter", "gemini"],
         "keys": {
             "openrouter": bool(os.getenv("OPENROUTER_API_KEY")),
@@ -163,11 +169,40 @@ async def get_settings():
 
 @app.post("/api/settings")
 async def update_settings(req: ProviderRequest):
-    """Switch the active LLM provider."""
-    from app.llm.client import get_model
+    """Switch the active LLM provider and update sandbox config."""
+    from app.llm.client import get_model, get_context_size
+    
+    # Update .env file for Sandbox keys
+    env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env")
+    lines = []
+    if os.path.exists(env_path):
+        with open(env_path, "r") as f:
+            lines = f.readlines()
+            
+    def update_env(key, value):
+        found = False
+        for i in range(len(lines)):
+            if lines[i].startswith(f"{key}="):
+                lines[i] = f"{key}={value}\n"
+                found = True
+                break
+        if not found:
+            lines.append(f"{key}={value}\n")
+
+    if req.sandbox_api_url is not None:
+        update_env("SANDBOX_API_URL", req.sandbox_api_url)
+        os.environ["SANDBOX_API_URL"] = req.sandbox_api_url
+    if req.sandbox_api_key is not None:
+        update_env("SANDBOX_API_KEY", req.sandbox_api_key)
+        os.environ["SANDBOX_API_KEY"] = req.sandbox_api_key
+
+    if os.path.exists(env_path):
+        with open(env_path, "w") as f:
+            f.writelines(lines)
+
     try:
-        set_provider(req.provider, model=req.model)
-        return {"status": "ok", "provider": get_provider(), "model": get_model()}
+        set_provider(req.provider, model=req.model, context_size=req.context_size)
+        return {"status": "ok", "provider": get_provider(), "model": get_model(), "context_size": get_context_size()}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 

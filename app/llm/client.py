@@ -20,6 +20,7 @@ import google.generativeai as genai
 _active_provider = os.getenv("LLM_PROVIDER", "openrouter")  # "openrouter" or "gemini"
 _default_model = "gemini-2.5-flash" if _active_provider == "gemini" else "anthropic/claude-3-haiku"
 _active_model = os.getenv("LLM_MODEL", _default_model)
+_context_size = int(os.getenv("CONTEXT_SIZE", "100000"))
 
 # Configure Gemini if key exists
 if os.getenv("GEMINI_API_KEY"):
@@ -34,14 +35,19 @@ def get_provider() -> str:
 def get_model() -> str:
     return _active_model
 
-def set_provider(provider: str, model: Optional[str] = None):
-    global _active_provider, _active_model
+def set_provider(provider: str, model: Optional[str] = None, context_size: Optional[int] = None):
+    global _active_provider, _active_model, _context_size
     if provider not in ["openrouter", "gemini"]:
         raise ValueError(f"Unknown provider: {provider}. Supported: 'openrouter', 'gemini'.")
     _active_provider = provider
     if model:
         _active_model = model
-    print(f"[LLM] Provider switched to: {provider}, Model: {_active_model}")
+    if context_size is not None:
+        _context_size = context_size
+    print(f"[LLM] Provider switched to: {provider}, Model: {_active_model}, Context Size: {_context_size}")
+
+def get_context_size() -> int:
+    return _context_size
 
 
 def clear_error_log():

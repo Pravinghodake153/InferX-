@@ -952,6 +952,20 @@ def extract_docx_text(path: str) -> str:
     return merged
 
 
+def _table_rows_to_text(rows: List[List[str]]) -> str:
+    if not rows:
+        return ""
+    
+    lines = []
+    for i, row in enumerate(rows):
+        line = " | ".join(cell.replace("\n", " ") for cell in row)
+        lines.append(f"| {line} |")
+        if i == 0:
+            separator = " | ".join("---" for _ in row)
+            lines.append(f"| {separator} |")
+    return "\n".join(lines)
+
+
 def extract_docx_package(path: str) -> Dict[str, Any]:
     text = extract_docx_text(path)
     package = extract_text_package(text)

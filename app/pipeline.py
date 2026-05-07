@@ -24,7 +24,7 @@ if __package__ is None or __package__ == "":
     # Allow running as: python app/pipeline.py
     sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from app.llm.client import call_llm, clear_error_log, get_error_log, get_provider
+from app.llm.client import call_llm, clear_error_log, get_error_log, get_provider, get_context_size
 from app.llm.prompts import (
     TENDER_ANALYZER_PROMPT,
     BIDDER_PARSER_PROMPT,
@@ -257,9 +257,22 @@ def run_pipeline_from_text(tender_text: str, bidder_text: str, bidder_filename: 
     # ══════════════════════════════════════════════
     print("\n[PIPELINE] ═══ STEP 1/7: Extracting tender criteria... ═══")
     step1_start = time.time()
+    context_size_chars = get_context_size() * 4
     try:
-        prompt = TENDER_ANALYZER_PROMPT.replace("{tender_text}", llm_tender_text)
-        criteria_result = call_llm(prompt, TenderCriteriaList)
+        if len(llm_tender_text) > context_size_chars:
+            print(f"[PIPELINE]   Tender text exceeds context size ({len(llm_tender_text)} chars > {context_size_chars}). Auto-chunking...")
+            chunks = [llm_tender_text[i:i+context_size_chars] for i in range(0, len(llm_tender_text), context_size_chars)]
+            all_criteria = []
+            for i, chunk in enumerate(chunks):
+                print(f"[PIPELINE]   Processing chunk {i+1}/{len(chunks)}...")
+                prompt = TENDER_ANALYZER_PROMPT.replace("{tender_text}", chunk)
+                chunk_result = call_llm(prompt, TenderCriteriaList)
+                if chunk_result and chunk_result.criteria:
+                    all_criteria.extend(chunk_result.criteria)
+            criteria_result = TenderCriteriaList(criteria=all_criteria)
+        else:
+            prompt = TENDER_ANALYZER_PROMPT.replace("{tender_text}", llm_tender_text)
+            criteria_result = call_llm(prompt, TenderCriteriaList)
     except Exception as e:
         criteria_result = None
         response["errors"].append(f"Tender analysis LLM call failed: {e}")
@@ -298,8 +311,26 @@ def run_pipeline_from_text(tender_text: str, bidder_text: str, bidder_filename: 
     step2_start = time.time()
     try:
         criteria_json = criteria_result.model_dump_json()
-        prompt = BIDDER_PARSER_PROMPT.replace("{bidder_text}", llm_bidder_text).replace("{criteria_list}", criteria_json)
-        evidence_result = call_llm(prompt, BidderEvidenceList)
+        if len(llm_bidder_text) > context_size_chars:
+            print(f"[PIPELINE]   Bidder text exceeds context size ({len(llm_bidder_text)} chars > {context_size_chars}). Auto-chunking...")
+            chunks = [llm_bidder_text[i:i+context_size_chars] for i in range(0, len(llm_bidder_text), context_size_chars)]
+            all_evidence = []
+            for i, chunk in enumerate(chunks):
+                print(f"[PIPELINE]   Processing chunk {i+1}/{len(chunks)}...")
+                prompt = BIDDER_PARSER_PROMPT.replace("{criteria_json}", criteria_json).replace("{bidder_text}", chunk)
+                chunk_result = call_llm(prompt, BidderEvidenceList)
+                if chunk_result and chunk_result.evidence:
+                    all_evidence.extend(chunk_result.evidence)
+            # Remove duplicate criterion evidence by keeping the one with best confidence or first match
+            unique_evidence = {}
+            for ev in all_evidence:
+                cid = ev.criterion_id
+                if cid not in unique_evidence or (unique_evidence[cid].confidence == "LOW" and ev.confidence in ["HIGH", "MEDIUM"]):
+                    unique_evidence[cid] = ev
+            evidence_result = BidderEvidenceList(evidence=list(unique_evidence.values()))
+        else:
+            prompt = BIDDER_PARSER_PROMPT.replace("{criteria_json}", criteria_json).replace("{bidder_text}", llm_bidder_text)
+            evidence_result = call_llm(prompt, BidderEvidenceList)
     except Exception as e:
         evidence_result = None
         response["errors"].append(f"Bidder parsing LLM call failed: {e}")
