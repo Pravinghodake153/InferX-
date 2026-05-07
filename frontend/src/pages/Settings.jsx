@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { SettingsAPI, AuditAPI } from '../services/api';
 import { useApp } from '../context/useApp';
-import { Bot, CheckCircle, Save, Link, AlertOctagon, ClipboardList, XCircle, Server } from 'lucide-react';
+import { Bot, CheckCircle, Save, Link, AlertOctagon, ClipboardList, XCircle, Server, RefreshCw, Trash2 } from 'lucide-react';
+import { useToast } from '../components/useToast';
 
 const OPENROUTER_MODELS = [
   { id: 'anthropic/claude-3-haiku', label: 'Claude 3 Haiku (Fast)' },
@@ -32,6 +33,7 @@ export default function Settings() {
   const [saved, setSaved] = useState(false);
   const [chainStatus, setChainStatus] = useState(null);
   const [auditLogs, setAuditLogs] = useState([]);
+  const toast = useToast();
 
   useEffect(() => {
     const init = async () => {
@@ -168,9 +170,34 @@ export default function Settings() {
           />
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12, gap: 12 }}>
+          <button className="btn btn-secondary" onClick={() => {
+            localStorage.removeItem('inferx_hidden_sandbox_ubids');
+            toast.success('Reset Complete', 'All hidden sandbox tenders are now visible again.');
+            window.location.reload();
+          }}>
+            <RefreshCw size={16} /> Reset Hidden Tenders
+          </button>
           <button className="btn btn-primary" onClick={handleSave} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             {saved ? <><CheckCircle size={16} /> Saved</> : <><Save size={16} /> Save Sandbox API</>}
+          </button>
+        </div>
+      </div>
+
+      {/* Troubleshooting */}
+      <div className="card" style={{ marginBottom: 24, border: '1px solid var(--fail)' }}>
+        <div className="card-header">
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--fail)' }}><AlertOctagon size={20} /> Troubleshooting</h3>
+        </div>
+        <div style={{ padding: 16 }}>
+          <p style={{ fontSize: '0.85rem', marginBottom: 12 }}>If projects are appearing incorrectly or the website state feels 'stuck', you can clear all local data. This will NOT delete your projects from Firestore, but will reset your browser's local cache.</p>
+          <button className="btn btn-danger" onClick={() => {
+            if (window.confirm('Are you sure you want to clear all local cache? You will be logged out and the app will reload.')) {
+              localStorage.clear();
+              window.location.href = '/';
+            }
+          }}>
+            <Trash2 size={16} /> Clear All Local Data (Emergency Reset)
           </button>
         </div>
       </div>

@@ -27,6 +27,16 @@ export default function Dashboard() {
   const [authPassword, setAuthPassword] = useState('');
   const [authError, setAuthError] = useState('');
   const [projectToDelete, setProjectToDelete] = useState(null);
+  const [hiddenSandboxUbids, setHiddenSandboxUbids] = useState(() => {
+    try {
+      const saved = localStorage.getItem('inferx_hidden_sandbox_ubids');
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('inferx_hidden_sandbox_ubids', JSON.stringify(hiddenSandboxUbids));
+  }, [hiddenSandboxUbids]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -104,7 +114,22 @@ export default function Dashboard() {
     { key: 'source', label: 'Source', render: (v) => (
       <span className={`header-badge ${v === 'MOCK' || v === 'SANDBOX' ? 'mock' : 'live'}`}>{v === 'MOCK' ? 'SANDBOX' : v}</span>
     )},
+    { key: 'actions', label: 'Actions', style: { width: 80 }, render: (_, row) => (
+      <button 
+        className="btn btn-sm btn-secondary" 
+        title="Hide from dashboard"
+        onClick={(e) => {
+          e.stopPropagation();
+          setHiddenSandboxUbids(prev => [...prev, row.ubid]);
+          toast.info('Tender Hidden', 'This sandbox tender has been hidden from your view.');
+        }}
+      >
+        <Trash2 size={14} />
+      </button>
+    )},
   ];
+
+  const visibleSandboxTenders = tenders.filter(t => !hiddenSandboxUbids.includes(t.ubid));
 
   if (loading) {
     return (
@@ -200,7 +225,7 @@ export default function Dashboard() {
           <div className="stat-label">My Projects</div>
         </div>
         <div className="stat-card">
-          <div className="stat-value">{tenders.length}</div>
+          <div className="stat-value">{visibleSandboxTenders.length}</div>
           <div className="stat-label">Sandbox Tenders</div>
         </div>
         <div className="stat-card pass">
@@ -272,7 +297,7 @@ export default function Dashboard() {
             UBID-based sandbox data
           </span>
         </div>
-        <DataTable columns={tenderColumns} data={tenders} />
+        <DataTable columns={tenderColumns} data={visibleSandboxTenders} />
       </div>
     </div>
   );
