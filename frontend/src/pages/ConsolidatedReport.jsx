@@ -1,19 +1,22 @@
 import { useState } from 'react';
 import { useApp } from '../context/useApp';
+import { useToast } from '../components/useToast';
 import VerdictBadge from '../components/VerdictBadge';
 import ConsolidatedGraphs from '../components/ConsolidatedGraphs';
-import { AlertTriangle, BarChart, CheckSquare, Square, XCircle, Hourglass, Zap, ClipboardList, Search, Lock, FileText, Table, RefreshCw } from 'lucide-react';
+import { AlertTriangle, BarChart, CheckSquare, Square, XCircle, Hourglass, Zap, ClipboardList, Search, Lock, FileText, Table, RefreshCw, StopCircle } from 'lucide-react';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export default function ConsolidatedReport() {
-  const { selectedProject, updateProject } = useApp();
+  const { selectedProject, updateProject, activeProcess, startProcess, clearProcess } = useApp();
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState('');
   const [report, setReport] = useState(selectedProject?.consolidatedReport || null);
   const [error, setError] = useState('');
   const [selectedBidder, setSelectedBidder] = useState(null);
   const [abortController, setAbortController] = useState(null);
+  const [showConflictModal, setShowConflictModal] = useState(false);
+  const toast = useToast();
 
   const isSandbox = selectedProject?.sandboxMode;
   const bidders = isSandbox 
@@ -25,11 +28,19 @@ export default function ConsolidatedReport() {
 
   const canRun = tenderText && bidders.length > 0 && bidderData.length > 0;
 
-  const handleRunConsolidated = async () => {
+  const handleRunConsolidated = async (forceOverride = false) => {
     if (!canRun) return;
+
+    // Process conflict guard
+    if (!forceOverride && activeProcess) {
+      setShowConflictModal(true);
+      return;
+    }
+
     setLoading(true);
     setError('');
     setProgress('Preparing bidder data...');
+    startProcess('consolidated', { projectId: selectedProject?.id });
 
     const controller = new AbortController();
     setAbortController(controller);
@@ -122,15 +133,19 @@ export default function ConsolidatedReport() {
       }
 
       setProgress('');
+      toast.success('Consolidated Report Ready', `Evaluated ${biddersToProcess.length} bidder(s) successfully.`);
     } catch (err) {
       if (err.name === 'AbortError') {
         setError('Evaluation stopped by user.');
+        toast.warning('Stopped', 'Consolidated evaluation was stopped by user.');
       } else {
         setError(err.message || 'Evaluation failed. Check backend logs.');
+        toast.error('Evaluation Failed', err.message || 'Check backend logs.');
       }
     } finally {
       setLoading(false);
       setAbortController(null);
+      clearProcess();
     }
   };
 
@@ -451,6 +466,30 @@ export default function ConsolidatedReport() {
             </button>
           </div>
         </>
+      )}
+
+      {/* ── PROCESS CONFLICT MODAL ── */}
+      {showConflictModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="card" style={{ width: '90%', maxWidth: 500, padding: 24 }}>
+            <h3 style={{ margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--review)' }}>
+              <AlertTriangle size={20} /> Process Already Running
+            </h3>
+            <p style={{ marginBottom: 8 }}>
+              A <strong>{activeProcess?.type}</strong> process is currently running 
+              (started {activeProcess?.startedAt ? new Date(activeProcess.startedAt).toLocaleTimeString() : 'recently'}).
+            </p>
+            <p style={{ marginBottom: 16, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+              Starting consolidated evaluation will terminate the current process. Continue?
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <button className="btn btn-secondary" onClick={() => setShowConflictModal(false)}>Cancel</button>
+              <button className="btn btn-primary" style={{ background: 'var(--review)', borderColor: 'var(--review)' }} onClick={() => { setShowConflictModal(false); clearProcess(); handleRunConsolidated(true); }}>
+                <StopCircle size={14} /> Terminate & Start
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

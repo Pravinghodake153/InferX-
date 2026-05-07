@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/useApp';
+import { useToast } from '../components/useToast';
 import FileUpload from '../components/FileUpload';
 import SandboxMode from '../components/SandboxMode';
 import { PipelineAPI, TenderAPI } from '../services/api';
@@ -35,7 +36,9 @@ export default function Upload() {
     addTenderDocument, removeTenderDocument,
     addBidder, addBidderDocument, removeBidderDocument,
     addProject,
+    startProcess, updateProcess, clearProcess,
   } = useApp();
+  const toast = useToast();
 
   // ── Dual Mode State ──
   const [mode, setMode] = useState('upload'); // 'upload' | 'sandbox'
@@ -59,6 +62,70 @@ export default function Upload() {
       addProject({ name: 'Untitled Tender' });
     }
   };
+
+  // ── Resume extraction polling on refresh ──
+  const resumeTriggeredRef = useRef(false);
+  useEffect(() => {
+    // Read from localStorage directly to avoid dependency issues
+    const stored = localStorage.getItem('inferx_active_process');
+    if (!stored || resumeTriggeredRef.current) return;
+
+    let proc;
+    try { proc = JSON.parse(stored); } catch { return; }
+
+    if (
+      proc?.type !== 'extraction' ||
+      !proc?.jobId ||
+      selectedProject?.extractionStatus !== 'running'
+    ) return;
+
+    resumeTriggeredRef.current = true;
+    const jobId = proc.jobId;
+
+    // Schedule state updates in a microtask to avoid synchronous setState in effect
+    queueMicrotask(() => {
+      setExtracting(true);
+      setActiveJobId(jobId);
+      setExtractionProgress(`Resuming extraction (Job: ${jobId})...`);
+    });
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const statusRes = await PipelineAPI.extractStatus(jobId);
+        const job = statusRes.data;
+        const progressMsg = `${job.progress || 'Processing...'} (${job.progress_pct || 0}% · ${job.elapsed_seconds || 0}s)`;
+        setExtractionProgress(progressMsg);
+        updateProcess({ progress: progressMsg, progressPct: job.progress_pct || 0 });
+
+        if (job.status === 'complete') {
+          clearInterval(pollInterval);
+          setExtractionProgress('Extraction complete! Refresh the page to see results.');
+          clearProcess();
+          setExtracting(false);
+          setActiveJobId(null);
+          window.location.reload();
+        } else if (job.status === 'failed') {
+          clearInterval(pollInterval);
+          setError(job.error || 'Extraction job failed.');
+          clearProcess();
+          setExtracting(false);
+          setActiveJobId(null);
+        }
+      } catch (pollErr) {
+        console.warn('Resume poll error:', pollErr.message);
+        if (pollErr?.response?.status === 404) {
+          clearInterval(pollInterval);
+          clearProcess();
+          setExtracting(false);
+          setActiveJobId(null);
+          setError('Extraction job was lost (backend may have restarted).');
+        }
+      }
+    }, 2500);
+
+    return () => clearInterval(pollInterval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedProject?.extractionStatus]);
 
   const handleTenderFile = async (file) => {
     if (!file || !activeTenderUpload) return;
@@ -133,6 +200,7 @@ export default function Upload() {
     // Run extraction pipeline
     setExtracting(true);
     setExtractionProgress('Starting extraction pipeline...');
+    startProcess('extraction', { projectId: selectedProjectId });
     updateProject(selectedProjectId, {
       status: 'uploaded',
       extractionStatus: 'running',
@@ -183,6 +251,7 @@ export default function Upload() {
         const uploadRes = await PipelineAPI.extract(formData);
         const jobId = uploadRes.data.job_id;
         setActiveJobId(jobId);
+        updateProcess({ jobId });
 
         if (!jobId) {
           throw new Error('Backend did not return a job ID.');
@@ -200,9 +269,9 @@ export default function Upload() {
               consecutiveErrors = 0; // Reset on success
 
               // Update progress display
-              setExtractionProgress(
-                `${job.progress || 'Processing...'} (${job.progress_pct || 0}% · ${job.elapsed_seconds || 0}s)`
-              );
+              const progressMsg = `${job.progress || 'Processing...'} (${job.progress_pct || 0}% · ${job.elapsed_seconds || 0}s)`;
+              setExtractionProgress(progressMsg);
+              updateProcess({ progress: progressMsg, progressPct: job.progress_pct || 0 });
 
               if (job.status === 'complete') {
                 clearInterval(pollInterval);
@@ -375,6 +444,7 @@ export default function Upload() {
       });
 
       setExtractionProgress(<>Extraction complete! Redirecting to Tender Setup...</>);
+      toast.success('Extraction Complete', `Extracted ${derivedCriteria.length} criteria from documents.`);
       setTimeout(() => navigate('/tender'), 800);
 
     } catch (err) {
@@ -384,9 +454,11 @@ export default function Upload() {
         extractionError: err.message || 'Extraction pipeline failed.',
       });
       setError(`Extraction failed: ${err.message || 'Check documents and try again.'}`);
+      toast.error('Extraction Failed', err.message || 'Check backend logs for details.');
     } finally {
       setExtracting(false);
       setActiveJobId(null);
+      clearProcess();
     }
   };
 

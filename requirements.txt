@@ -1,22 +1,33 @@
-pydantic>=2.0.0
-python-dotenv>=1.0.1
-PyMuPDF>=1.23.0
+# ── Core Framework ──
 fastapi>=0.100.0
 uvicorn>=0.23.0
+pydantic>=2.0.0
+python-dotenv>=1.0.1
 python-multipart>=0.0.6
-pdfplumber>=0.11.0
-paddleocr>=2.7.0
-paddlepaddle>=2.5.0
-
-pypdf>=4.0.0
-python-docx>=1.1.0
-reportlab>=4.0.0
-openpyxl>=3.1.0
 httpx>=0.24.0
+
+# ── Document Parsing ──
+PyMuPDF>=1.23.0
+pypdf>=4.0.0
+pdfplumber>=0.11.0
+python-docx>=1.1.0
+
+# ── OCR & Image Processing ──
 pytesseract>=0.3.10
 opencv-python-headless>=4.8.0
-deskew>=1.5.0
 Pillow>=10.0.0
+deskew>=1.5.0
 numpy>=1.24.0
+
+# ── PaddleOCR (optional — installed separately if platform supports it) ──
+# paddlepaddle and paddleocr are installed conditionally in setup.sh
+# because paddlepaddle does not have wheels for all platforms (e.g. macOS ARM).
+
+# ── AI Providers ──
 openai>=1.0.0
 google-generativeai>=0.8.3
+requests>=2.31.0
+
+# ── Export & Reporting ──
+reportlab>=4.0.0
+openpyxl>=3.1.0

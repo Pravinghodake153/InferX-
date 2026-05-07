@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SandboxAPI } from '../services/api';
 import { useApp } from '../context/useApp';
+import { useToast } from '../components/useToast';
 import DataTable from '../components/DataTable';
 import { Edit3, Upload, CheckCircle, Search, ClipboardList, FolderKanban, Trash2, XCircle } from 'lucide-react';
 import { auth } from '../services/firebase';
@@ -13,6 +14,7 @@ export default function Dashboard() {
     projects, selectedProjectId, setSelectedProjectId,
     addProject, deleteProject,
   } = useApp();
+  const toast = useToast();
 
   const [tenders, setTenders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -43,6 +45,7 @@ export default function Dashboard() {
   const handleCreateProject = () => {
     if (!newProjectName.trim()) return;
     addProject({ name: newProjectName.trim() });
+    toast.success('Project Created', `"${newProjectName.trim()}" has been created.`);
     setNewProjectName('');
     setShowNewProject(false);
     navigate('/upload');
@@ -72,10 +75,12 @@ export default function Dashboard() {
     try {
       await signInWithEmailAndPassword(auth, authEmail, authPassword);
       deleteProject(projectToDelete.id);
+      toast.success('Project Deleted', `"${projectToDelete.name}" has been removed.`);
       setShowAuthModal(false);
       setProjectToDelete(null);
     } catch (err) {
       setAuthError('Authentication failed: ' + err.message);
+      toast.error('Delete Failed', 'Authentication failed. Check credentials.');
     }
   };
 

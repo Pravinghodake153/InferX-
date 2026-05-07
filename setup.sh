@@ -7,7 +7,9 @@
 #  Supported: macOS (Homebrew) / Ubuntu/Debian (apt)
 # ═══════════════════════════════════════════════════════════════
 
-set -e
+# Resolve script directory (works even if called from another path)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -91,19 +93,67 @@ if [ ! -d "venv" ]; then
     python3 -m venv venv
 fi
 
+# Activate venv
 source venv/bin/activate
-echo "  Installing Python packages from requirements.txt..."
+
+echo "  Upgrading pip..."
 pip install --upgrade pip > /dev/null 2>&1
-pip install -r requirements.txt 2>&1 | tail -1
+
+echo "  Installing core Python packages from requirements.txt..."
+pip install -r requirements.txt 2>&1 | grep -E "(Successfully|ERROR|already satisfied)" | tail -5
+
+# Verify uvicorn is installed (critical dependency)
+if ! venv/bin/python -c "import uvicorn" 2>/dev/null; then
+    echo -e "${RED}[ERROR]${NC} uvicorn failed to install. Retrying..."
+    pip install uvicorn fastapi python-multipart 2>&1
+fi
+
+# Install PaddleOCR conditionally (fails on some platforms like macOS ARM)
+echo "  Installing PaddleOCR (optional, for advanced OCR)..."
+pip install paddlepaddle paddleocr 2>/dev/null && \
+    echo -e "${GREEN}  [OK]${NC} PaddleOCR installed" || \
+    echo -e "${YELLOW}  [SKIP]${NC} PaddleOCR not available on this platform. Tesseract OCR will be used instead."
+
 echo -e "${GREEN}[OK]${NC} Python dependencies installed"
+
+# Verify critical packages
+echo "  Verifying critical packages..."
+MISSING=""
+for pkg in uvicorn fastapi pydantic pymupdf pytesseract; do
+    if ! venv/bin/python -c "import $pkg" 2>/dev/null; then
+        MISSING="$MISSING $pkg"
+    fi
+done
+
+if [ -n "$MISSING" ]; then
+    echo -e "${RED}[WARNING]${NC} Missing packages:$MISSING"
+    echo "  Attempting reinstall..."
+    pip install $MISSING 2>&1
+else
+    echo -e "${GREEN}  [OK]${NC} All critical packages verified"
+fi
 
 # ── Step 5: Install Frontend Dependencies ──
 echo ""
 echo -e "${YELLOW}[5/6]${NC} Installing frontend (Node.js) dependencies..."
 cd frontend
-npm install 2>&1 | tail -3
-echo -e "${GREEN}[OK]${NC} Frontend dependencies installed"
+npm install 2>&1 | tail -5
 cd ..
+
+# Verify frontend installed
+if [ -d "frontend/node_modules" ] && [ -d "frontend/node_modules/.vite" ] || [ -d "frontend/node_modules/react" ]; then
+    echo -e "${GREEN}[OK]${NC} Frontend dependencies installed"
+else
+    echo -e "${YELLOW}[RETRY]${NC} Retrying frontend install..."
+    cd frontend
+    npm install --legacy-peer-deps 2>&1 | tail -5
+    cd ..
+    if [ -d "frontend/node_modules" ]; then
+        echo -e "${GREEN}[OK]${NC} Frontend dependencies installed (with legacy peer deps)"
+    else
+        echo -e "${RED}[ERROR]${NC} Frontend install failed. Try manually: cd frontend && npm install"
+    fi
+fi
 
 # ── Step 6: Setup .env file ──
 echo ""
@@ -115,8 +165,29 @@ if [ ! -f ".env" ]; then
         echo -e "${YELLOW}[ACTION REQUIRED]${NC} .env file created from .env.example"
         echo -e "${YELLOW}  Please edit .env and add your API keys before starting.${NC}"
     else
-        echo -e "${RED}[WARNING]${NC} No .env or .env.example found!"
-        echo "  Please create a .env file with your API keys. See README.md for details."
+        # Create minimal .env
+        cat > .env << 'EOF'
+# InferX Document AI — Environment Configuration
+# Add your API keys below
+
+# Google Gemini API Key (primary provider)
+GEMINI_API_KEY=
+
+# OpenRouter API Key (fallback provider)
+OPENROUTER_API_KEY=
+
+# AI Provider: gemini or openrouter
+AI_PROVIDER=gemini
+
+# AI Model ID
+AI_MODEL=gemini-2.5-flash
+
+# Sandbox API (optional)
+SANDBOX_API_URL=
+SANDBOX_API_KEY=
+EOF
+        echo -e "${YELLOW}[CREATED]${NC} .env file created with defaults"
+        echo -e "${YELLOW}  Please edit .env and add your API keys before starting.${NC}"
     fi
 else
     echo -e "${GREEN}[OK]${NC} .env file already exists"

@@ -3,7 +3,7 @@ import { useApp } from '../context/useApp';
 import { Landmark, Moon, Sun, Menu } from 'lucide-react';
 
 export default function Header() {
-  const { toggleSidebar, sidebarCollapsed, selectedProject } = useApp();
+  const { toggleSidebar, sidebarCollapsed, selectedProject, activeProcess } = useApp();
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem('inferx_theme') || 'light';
   });
@@ -15,6 +15,13 @@ export default function Header() {
   }, [theme]);
 
   const toggleTheme = () => setTheme(t => t === 'light' ? 'dark' : 'light');
+
+  const processLabel = activeProcess
+    ? activeProcess.type === 'extraction' ? 'Extracting...'
+    : activeProcess.type === 'evaluation' ? 'Evaluating...'
+    : activeProcess.type === 'consolidated' ? 'Consolidated Report...'
+    : 'Processing...'
+    : null;
 
   return (
     <header className="header">
@@ -34,6 +41,17 @@ export default function Header() {
           <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginLeft: 4 }}>
             / {selectedProject.name}
           </span>
+        )}
+
+        {/* ── Global Process Indicator ── */}
+        {activeProcess && (
+          <div className="header-process-indicator" title={`${activeProcess.type} in progress since ${new Date(activeProcess.startedAt).toLocaleTimeString()}`}>
+            <div className="mini-spinner" />
+            <span>{processLabel}</span>
+            {activeProcess.progressPct > 0 && (
+              <span style={{ opacity: 0.7 }}>{activeProcess.progressPct}%</span>
+            )}
+          </div>
         )}
       </div>
       <div className="header-right">

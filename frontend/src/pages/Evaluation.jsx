@@ -1,13 +1,15 @@
 import { useState } from 'react';
 import { useApp } from '../context/useApp';
+import { useToast } from '../components/useToast';
 import VerdictBadge from '../components/VerdictBadge';
 import EvaluationGraphs from '../components/EvaluationGraphs';
-import { AlertTriangle, CheckCircle, Square, Hourglass, XCircle, Zap, Search, Lock, FileText, GitCompare, ClipboardList, BarChart2, User, Bot, AlertOctagon, Building2 } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Square, Hourglass, XCircle, Zap, Search, Lock, FileText, GitCompare, ClipboardList, BarChart2, User, Bot, AlertOctagon, Building2, StopCircle } from 'lucide-react';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export default function Evaluation() {
-  const { selectedProject, updateProject, selectedProjectId } = useApp();
+  const { selectedProject, updateProject, selectedProjectId, activeProcess, startProcess, clearProcess } = useApp();
+  const toast = useToast();
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -16,6 +18,7 @@ export default function Evaluation() {
   const [showRawOutputModal, setShowRawOutputModal] = useState(false);
   const [previewPayload, setPreviewPayload] = useState(null);
   const [activeBidderIdx, setActiveBidderIdx] = useState(0);
+  const [showConflictModal, setShowConflictModal] = useState(false);
 
   // ── Versioning State ──
   const versions = selectedProject?.versions || [];
@@ -96,6 +99,13 @@ export default function Evaluation() {
 
   const handlePreviewPayload = () => {
     try {
+      // If viewing a completed version, show the persisted payload
+      if (activeVersion?.payload_sent) {
+        setPreviewPayload(activeVersion.payload_sent);
+        setShowPayloadModal(true);
+        return;
+      }
+      // Otherwise build a fresh preview
       const p = buildPayload();
       setPreviewPayload(p);
       setShowPayloadModal(true);
@@ -104,10 +114,18 @@ export default function Evaluation() {
     }
   };
 
-  const handleRunEvaluation = async () => {
+  const handleRunEvaluation = async (forceOverride = false) => {
     if (!canEvaluate || isFinalized) return;
+
+    // Process conflict guard
+    if (!forceOverride && activeProcess) {
+      setShowConflictModal(true);
+      return;
+    }
+
     setLoading(true);
     setError('');
+    startProcess('evaluation', { projectId: selectedProjectId, bidderIdx: activeBidderIdx });
 
     try {
       const payload = buildPayload();
@@ -150,6 +168,7 @@ export default function Evaluation() {
         output: evals,
         criteria: result.criteria || [],
         full_result: bidderResult,
+        payload_sent: payload, // Persist for audit/preview
         created_at: new Date().toISOString(),
       };
 
@@ -169,10 +188,13 @@ export default function Evaluation() {
 
       setSelectedVersionId(newVersionId);
       setCompareMode(false);
+      toast.success('Evaluation Complete', `Bidder "${bidderResult.bidder_name || 'Unknown'}" evaluated successfully.`);
     } catch (err) {
       setError(err.message || 'Evaluation failed.');
+      toast.error('Evaluation Failed', err.message || 'Check backend logs for details.');
     } finally {
       setLoading(false);
+      clearProcess();
     }
   };
 
@@ -291,25 +313,6 @@ export default function Evaluation() {
           </div>
         </div>
 
-        {/* ── PAYLOAD PREVIEW MODAL ── */}
-        {showPayloadModal && previewPayload && (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div className="card" style={{ width: '90%', maxWidth: 900, maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
-              <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}><Search size={20} /> What the LLM Sees (Audit Payload Preview)</h3>
-                <button className="btn btn-sm btn-secondary" onClick={() => setShowPayloadModal(false)}>Close</button>
-              </div>
-              <div style={{ padding: 16, overflowY: 'auto', background: '#0f172a', color: '#e2e8f0', fontFamily: 'monospace', fontSize: '0.8rem', whiteSpace: 'pre-wrap' }}>
-                <div style={{ color: '#94a3b8', marginBottom: 8 }}>// Notice that PII has been replaced with safe tokens (e.g., &lt;GST_1&gt;, &lt;EMAIL_1&gt;)</div>
-                {JSON.stringify(previewPayload, null, 2)}
-              </div>
-              <div style={{ padding: 16, borderTop: '1px solid var(--border-color)', background: 'var(--bg-secondary)', display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
-                <button className="btn btn-secondary" onClick={() => setShowPayloadModal(false)}>Close</button>
-                <button className="btn btn-primary" onClick={() => { setShowPayloadModal(false); handleRunEvaluation(); }}>Run Evaluation Now</button>
-              </div>
-            </div>
-          </div>
-        )}
 
       </div>
     );
@@ -352,6 +355,48 @@ export default function Evaluation() {
 
   return (
     <div>
+      {/* ── BIDDER SELECTOR (in results view) ── */}
+      <div className="card" style={{ marginBottom: 16, padding: '12px 16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem' }}>
+            <Building2 size={18} /> Select Bidder
+          </h3>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            {versions.filter((v, i, arr) => arr.findIndex(x => x.bidder_id === v.bidder_id) === i).length} of {(isSandbox ? (selectedProject.sandboxBidderUbids || ['BID-001']) : (selectedProject.bidders || [])).length} bidders evaluated
+          </span>
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {(isSandbox ? (selectedProject.sandboxBidderUbids || ['BID-001']) : (selectedProject.bidders || [])).map((b, idx) => {
+            const bId = isSandbox ? b : b.id;
+            const bName = isSandbox ? `Sandbox Bidder ${idx + 1}` : b.name;
+            const isSelected = activeBidderIdx === idx;
+            const hasResults = versions.some(v => v.bidder_id === bId);
+            return (
+              <button 
+                key={bId} 
+                onClick={() => setActiveBidderIdx(idx)}
+                className={`btn btn-sm ${isSelected ? 'btn-primary' : 'btn-secondary'}`}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, border: isSelected ? 'none' : '1px solid var(--border-color)' }}
+              >
+                <Building2 size={14} />
+                {bName}
+                {hasResults && <CheckCircle size={12} style={{ color: isSelected ? '#fff' : 'var(--pass)' }} />}
+              </button>
+            );
+          })}
+          {!isFinalized && (
+            <button 
+              className="btn btn-sm btn-primary" 
+              onClick={() => handleRunEvaluation()}
+              disabled={loading}
+              style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+            >
+              {loading ? <><Hourglass size={14} /> Running...</> : <><Zap size={14} /> Evaluate Selected Bidder</>}
+            </button>
+          )}
+        </div>
+      </div>
+
       <div style={{ marginBottom: 24 }}>
         <h1>Evaluation Results</h1>
         <p style={{ color: 'var(--text-muted)', marginTop: 4 }}>
@@ -601,6 +646,52 @@ export default function Evaluation() {
                 <Lock size={16} /> This evaluation has been finalized and is locked for auditing.
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ═══ SHARED MODALS (visible in both initial and results views) ═══ */}
+
+      {/* ── PAYLOAD PREVIEW MODAL ── */}
+      {showPayloadModal && previewPayload && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="card" style={{ width: '90%', maxWidth: 900, maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+            <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}><Search size={20} /> What the LLM Sees (Audit Payload Preview)</h3>
+              <button className="btn btn-sm btn-secondary" onClick={() => setShowPayloadModal(false)}>Close</button>
+            </div>
+            <div style={{ padding: 16, overflowY: 'auto', background: '#0f172a', color: '#e2e8f0', fontFamily: 'monospace', fontSize: '0.8rem', whiteSpace: 'pre-wrap' }}>
+              <div style={{ color: '#94a3b8', marginBottom: 8 }}>// Notice that PII has been replaced with safe tokens (e.g., &lt;GST_1&gt;, &lt;EMAIL_1&gt;)</div>
+              {JSON.stringify(previewPayload, null, 2)}
+            </div>
+            <div style={{ padding: 16, borderTop: '1px solid var(--border-color)', background: 'var(--bg-secondary)', display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+              <button className="btn btn-secondary" onClick={() => setShowPayloadModal(false)}>Close</button>
+              <button className="btn btn-primary" onClick={() => { setShowPayloadModal(false); handleRunEvaluation(); }}>Run Evaluation Now</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── PROCESS CONFLICT MODAL ── */}
+      {showConflictModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="card" style={{ width: '90%', maxWidth: 500, padding: 24 }}>
+            <h3 style={{ margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--review)' }}>
+              <AlertTriangle size={20} /> Process Already Running
+            </h3>
+            <p style={{ marginBottom: 8 }}>
+              A <strong>{activeProcess?.type}</strong> process is currently running 
+              (started {activeProcess?.startedAt ? new Date(activeProcess.startedAt).toLocaleTimeString() : 'recently'}).
+            </p>
+            <p style={{ marginBottom: 16, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+              Starting a new evaluation will terminate the current process. Do you want to continue?
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <button className="btn btn-secondary" onClick={() => setShowConflictModal(false)}>Cancel</button>
+              <button className="btn btn-primary" style={{ background: 'var(--review)', borderColor: 'var(--review)' }} onClick={() => { setShowConflictModal(false); clearProcess(); handleRunEvaluation(true); }}>
+                <StopCircle size={14} /> Terminate & Start Evaluation
+              </button>
+            </div>
           </div>
         </div>
       )}

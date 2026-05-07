@@ -4,6 +4,10 @@
 #  Launches backend (port 8000) and frontend (port 5173)
 # ═══════════════════════════════════════════════════════════════
 
+# Resolve script directory (works even if called from another path)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -30,11 +34,23 @@ if [ ! -d "venv" ]; then
     exit 1
 fi
 
-# Check node_modules
+# Check uvicorn is actually installed
+if [ ! -f "venv/bin/uvicorn" ]; then
+    echo -e "${YELLOW}[FIX]${NC} uvicorn not found in venv. Installing..."
+    source venv/bin/activate
+    pip install uvicorn fastapi python-multipart 2>&1 | tail -3
+fi
+
+# Check node_modules — auto-install if missing
 if [ ! -d "frontend/node_modules" ]; then
-    echo -e "${RED}[ERROR]${NC} Frontend dependencies not installed!"
-    echo "  Run ./setup.sh first to install dependencies."
-    exit 1
+    echo -e "${YELLOW}[FIX]${NC} Frontend dependencies missing. Installing..."
+    cd frontend
+    npm install 2>&1 | tail -5
+    cd ..
+    if [ ! -d "frontend/node_modules" ]; then
+        echo -e "${RED}[ERROR]${NC} Frontend install failed. Try: cd frontend && npm install"
+        exit 1
+    fi
 fi
 
 # Create required directories
@@ -43,7 +59,7 @@ mkdir -p exports _uploads audit_logs
 # Start Backend
 echo -e "${YELLOW}[1/2]${NC} Starting Backend Server (port 8000)..."
 source venv/bin/activate
-uvicorn app.api:app --reload --port 8000 &
+venv/bin/uvicorn app.api:app --reload --port 8000 &
 BACKEND_PID=$!
 echo -e "${GREEN}[OK]${NC} Backend started (PID: $BACKEND_PID)"
 

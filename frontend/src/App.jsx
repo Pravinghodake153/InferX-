@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AppProvider } from './context/AppContext';
+import { ToastProvider } from './components/Toast';
 import Layout from './components/Layout';
 import RouteGuard from './components/RouteGuard';
 import RouteTracker from './components/RouteTracker';
@@ -15,35 +16,37 @@ import Chatbot from './components/Chatbot';
 export default function App() {
   return (
     <AppProvider>
-      <BrowserRouter>
-        <RouteTracker />
-        <Layout>
-          <Routes>
-            <Route path="/" element={
-              <RouteGuard page="dashboard"><Dashboard /></RouteGuard>
-            } />
-            <Route path="/upload" element={
-              <RouteGuard page="upload"><Upload /></RouteGuard>
-            } />
-            <Route path="/tender" element={
-              <RouteGuard page="tender"><TenderSetup /></RouteGuard>
-            } />
-            <Route path="/review" element={
-              <RouteGuard page="review"><ReviewCorrection /></RouteGuard>
-            } />
-            <Route path="/evaluation" element={
-              <RouteGuard page="evaluation"><Evaluation /></RouteGuard>
-            } />
-            <Route path="/consolidated" element={
-              <RouteGuard page="consolidated"><ConsolidatedReport /></RouteGuard>
-            } />
-            <Route path="/settings" element={
-              <RouteGuard page="settings"><Settings /></RouteGuard>
-            } />
-          </Routes>
-          <Chatbot />
-        </Layout>
-      </BrowserRouter>
+      <ToastProvider>
+        <BrowserRouter>
+          <RouteTracker />
+          <Layout>
+            <Routes>
+              <Route path="/" element={
+                <RouteGuard page="dashboard"><Dashboard /></RouteGuard>
+              } />
+              <Route path="/upload" element={
+                <RouteGuard page="upload"><Upload /></RouteGuard>
+              } />
+              <Route path="/tender" element={
+                <RouteGuard page="tender"><TenderSetup /></RouteGuard>
+              } />
+              <Route path="/review" element={
+                <RouteGuard page="review"><ReviewCorrection /></RouteGuard>
+              } />
+              <Route path="/evaluation" element={
+                <RouteGuard page="evaluation"><Evaluation /></RouteGuard>
+              } />
+              <Route path="/consolidated" element={
+                <RouteGuard page="consolidated"><ConsolidatedReport /></RouteGuard>
+              } />
+              <Route path="/settings" element={
+                <RouteGuard page="settings"><Settings /></RouteGuard>
+              } />
+            </Routes>
+            <Chatbot />
+          </Layout>
+        </BrowserRouter>
+      </ToastProvider>
     </AppProvider>
   );
 }

@@ -887,3 +887,37 @@ https://github.com/google-gemini/deprecated-generative-ai-python/blob/main/READM
 INFO:     Started server process [45582]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
+Traceback (most recent call last):
+  File "/Users/pravinghodake/Desktop/Projects/AI for Bharat/Prototype/InferX/venv/bin/uvicorn", line 10, in <module>
+    sys.exit(main())
+  File "/Users/pravinghodake/Desktop/Projects/AI for Bharat/Prototype/InferX/venv/lib/python3.9/site-packages/click/core.py", line 1161, in __call__
+    return self.main(*args, **kwargs)
+  File "/Users/pravinghodake/Desktop/Projects/AI for Bharat/Prototype/InferX/venv/lib/python3.9/site-packages/click/core.py", line 1082, in main
+    rv = self.invoke(ctx)
+  File "/Users/pravinghodake/Desktop/Projects/AI for Bharat/Prototype/InferX/venv/lib/python3.9/site-packages/click/core.py", line 1443, in invoke
+    return ctx.invoke(self.callback, **ctx.params)
+  File "/Users/pravinghodake/Desktop/Projects/AI for Bharat/Prototype/InferX/venv/lib/python3.9/site-packages/click/core.py", line 788, in invoke
+    return __callback(*args, **kwargs)
+  File "/Users/pravinghodake/Desktop/Projects/AI for Bharat/Prototype/InferX/venv/lib/python3.9/site-packages/uvicorn/main.py", line 423, in main
+    run(
+  File "/Users/pravinghodake/Desktop/Projects/AI for Bharat/Prototype/InferX/venv/lib/python3.9/site-packages/uvicorn/main.py", line 588, in run
+    ChangeReload(config, target=server.run, sockets=[sock]).run()
+  File "/Users/pravinghodake/Desktop/Projects/AI for Bharat/Prototype/InferX/venv/lib/python3.9/site-packages/uvicorn/supervisors/basereload.py", line 53, in run
+    for changes in self:
+  File "/Users/pravinghodake/Desktop/Projects/AI for Bharat/Prototype/InferX/venv/lib/python3.9/site-packages/uvicorn/supervisors/basereload.py", line 72, in __next__
+    return self.should_restart()
+  File "/Users/pravinghodake/Desktop/Projects/AI for Bharat/Prototype/InferX/venv/lib/python3.9/site-packages/uvicorn/supervisors/statreload.py", line 32, in should_restart
+    for file in self.iter_py_files():
+  File "/Users/pravinghodake/Desktop/Projects/AI for Bharat/Prototype/InferX/venv/lib/python3.9/site-packages/uvicorn/supervisors/statreload.py", line 52, in iter_py_files
+    for path in list(reload_dir.rglob("*.py")):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py", line 1180, in rglob
+    for p in selector.select_from(self):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py", line 601, in _select_from
+    for p in successor_select(starting_point, is_dir, exists, scandir):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py", line 548, in _select_from
+    with scandir(parent_path) as scandir_it:
+FileNotFoundError: [Errno 2] No such file or directory: '/Users/pravinghodake/Desktop/Projects/AI for Bharat/Prototype/InferX/scratch'
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [45582]

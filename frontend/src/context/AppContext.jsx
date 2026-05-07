@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { AppContext } from './appContextValue';
 import { db } from '../services/firebase';
 import { collection, doc, setDoc, getDocs, deleteDoc } from 'firebase/firestore';
@@ -8,6 +8,8 @@ const LS_PROJECTS = 'inferx_projects';
 const LS_SELECTED_ID = 'inferx_selected_project_id';
 const LS_SIDEBAR = 'inferx_sidebar_collapsed';
 const LS_LAST_ROUTE = 'inferx_last_route';
+const LS_DELETED_IDS = 'inferx_deleted_ids';
+const LS_ACTIVE_PROCESS = 'inferx_active_process';
 
 /**
  * Serialize project for localStorage.
@@ -64,6 +66,32 @@ function loadSidebar() {
   }
 }
 
+function loadDeletedIds() {
+  try {
+    const raw = localStorage.getItem(LS_DELETED_IDS);
+    if (!raw) return new Set();
+    return new Set(JSON.parse(raw));
+  } catch {
+    return new Set();
+  }
+}
+
+function saveDeletedIds(ids) {
+  try {
+    localStorage.setItem(LS_DELETED_IDS, JSON.stringify([...ids]));
+  } catch { /* ignore */ }
+}
+
+function loadActiveProcess() {
+  try {
+    const raw = localStorage.getItem(LS_ACTIVE_PROCESS);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Global application state — project-scoped, sidebar, and evaluation data.
  *
@@ -80,6 +108,9 @@ export function AppProvider({ children }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => loadSidebar());
   const toggleSidebar = useCallback(() => setSidebarCollapsed(c => !c), []);
 
+  // ── Deleted IDs tracker (prevents Firestore from restoring deleted projects) ──
+  const deletedIdsRef = useRef(loadDeletedIds());
+
   // ── Projects (persisted to localStorage) ──
   const [projects, setProjects] = useState(() => loadProjects());
   const [selectedProjectId, setSelectedProjectId] = useState(() => {
@@ -95,8 +126,38 @@ export function AppProvider({ children }) {
     return id;
   });
 
+  // ── Active Process State (persisted for refresh resilience) ──
+  const [activeProcess, setActiveProcessState] = useState(() => loadActiveProcess());
+
   // Hydration is handled in the lazy initializer above, so always true
   const hydrated = true;
+
+  // ── Process management helpers ──
+  const startProcess = useCallback((type, meta = {}) => {
+    const process = {
+      type, // 'extraction' | 'evaluation' | 'consolidated'
+      startedAt: new Date().toISOString(),
+      progress: 'Starting...',
+      progressPct: 0,
+      ...meta,
+    };
+    setActiveProcessState(process);
+    try { localStorage.setItem(LS_ACTIVE_PROCESS, JSON.stringify(process)); } catch { /* ignore */ }
+  }, []);
+
+  const updateProcess = useCallback((updates) => {
+    setActiveProcessState(prev => {
+      if (!prev) return prev;
+      const next = { ...prev, ...updates };
+      try { localStorage.setItem(LS_ACTIVE_PROCESS, JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
+  }, []);
+
+  const clearProcess = useCallback(() => {
+    setActiveProcessState(null);
+    try { localStorage.removeItem(LS_ACTIVE_PROCESS); } catch { /* ignore */ }
+  }, []);
 
   // ── Persist projects to localStorage and Firestore on every change ──
   useEffect(() => {
@@ -105,8 +166,10 @@ export function AppProvider({ children }) {
       const serialized = projects.map(serializeProject);
       localStorage.setItem(LS_PROJECTS, JSON.stringify(serialized));
       
-      // Also sync to Firestore
+      // Also sync to Firestore (only non-deleted projects)
+      const currentDeletedIds = deletedIdsRef.current;
       serialized.forEach(async (p) => {
+        if (currentDeletedIds.has(p.id)) return; // Don't re-upload deleted projects
         try {
           await setDoc(doc(db, 'projects', p.id), p);
         } catch (e) {
@@ -125,9 +188,12 @@ export function AppProvider({ children }) {
         const snapshot = await getDocs(collection(db, 'projects'));
         if (!snapshot.empty) {
           const fetched = snapshot.docs.map(d => d.data());
+          // Filter out any projects that were deleted locally
+          const currentDeletedIds = deletedIdsRef.current;
+          const filtered = fetched.filter(p => !currentDeletedIds.has(p.id));
           // Sort by createdAt desc
-          fetched.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-          setProjects(fetched);
+          filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+          setProjects(filtered);
         }
       } catch (e) {
         console.warn('Failed to fetch projects from Firestore:', e);
@@ -192,6 +258,10 @@ export function AppProvider({ children }) {
         irrelevant: {}
       },
     };
+    // Remove from deleted set if re-creating with same ID (unlikely but safe)
+    deletedIdsRef.current.delete(id);
+    saveDeletedIds(deletedIdsRef.current);
+
     setProjects(prev => [newProject, ...prev]);
     setSelectedProjectId(id);
     return id;
@@ -202,12 +272,26 @@ export function AppProvider({ children }) {
   }, []);
 
   const deleteProject = useCallback(async (id) => {
+    // 1. Add to deleted set immediately (prevents Firestore from restoring it)
+    deletedIdsRef.current.add(id);
+    saveDeletedIds(deletedIdsRef.current);
+
+    // 2. Remove from local state + localStorage immediately
     setProjects(prev => prev.filter(p => p.id !== id));
     if (selectedProjectId === id) setSelectedProjectId(null);
+
+    // 3. Delete from Firestore
     try {
       await deleteDoc(doc(db, 'projects', id));
+      // After successful Firestore deletion, we can safely clear from deleted set
+      // (to prevent the set from growing forever)
+      setTimeout(() => {
+        deletedIdsRef.current.delete(id);
+        saveDeletedIds(deletedIdsRef.current);
+      }, 5000); // 5s grace period
     } catch (e) {
       console.warn('Failed to delete project from Firestore:', e);
+      // Keep in deleted set so it won't be restored on next fetch
     }
   }, [selectedProjectId]);
 
@@ -325,6 +409,11 @@ export function AppProvider({ children }) {
     // Route persistence
     setLastRoute,
     getLastRoute,
+    // Process tracking
+    activeProcess,
+    startProcess,
+    updateProcess,
+    clearProcess,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

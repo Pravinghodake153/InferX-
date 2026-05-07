@@ -402,7 +402,19 @@ body.light .sidebar-footer {
   font-size: 0.875rem;
   font-weight: 500;
   border: none;
-  transition: all 0.15s;
+  transition: all 0.15s ease, transform 0.1s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .btn-primary {
@@ -761,6 +773,42 @@ textarea.form-input {
   to { transform: rotate(360deg); }
 }
 
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.8); }
+}
+
+.header-process-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  background: rgba(37, 99, 235, 0.1);
+  border: 1px solid rgba(37, 99, 235, 0.25);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--accent);
+  animation: popIn 0.3s ease;
+}
+
+.header-process-indicator .pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: pulse-dot 1.2s ease-in-out infinite;
+}
+
+.header-process-indicator .mini-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(37, 99, 235, 0.2);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
 /* ── Empty State ── */
 .empty-state {
   text-align: center;
@@ -1069,4 +1117,88 @@ textarea.form-input {
 
 .chatbot-input button:not(:disabled):hover {
   background: #2563eb;
+}
+
+/* ── Toast Notifications ── */
+.toast-container {
+  position: fixed;
+  top: 64px;
+  right: 16px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+  max-width: 420px;
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+  animation: toast-slide-in 0.35s ease forwards;
+  pointer-events: auto;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  border-left: 4px solid;
+  backdrop-filter: blur(8px);
+}
+
+.toast.toast-exit {
+  animation: toast-slide-out 0.25s ease forwards;
+}
+
+.toast-info {
+  background: #eff6ff;
+  border-color: var(--accent);
+  color: #1e40af;
+}
+.toast-success {
+  background: #f0fdf4;
+  border-color: var(--pass);
+  color: #166534;
+}
+.toast-warning {
+  background: #fffbeb;
+  border-color: #f59e0b;
+  color: #92400e;
+}
+.toast-error {
+  background: #fef2f2;
+  border-color: var(--fail);
+  color: #991b1b;
+}
+
+.toast-content {
+  flex: 1;
+}
+.toast-title {
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+.toast-message {
+  opacity: 0.85;
+  font-size: 0.8rem;
+}
+.toast-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px;
+  opacity: 0.5;
+  font-size: 1rem;
+  line-height: 1;
+}
+.toast-close:hover { opacity: 1; }
+
+@keyframes toast-slide-in {
+  from { transform: translateX(120%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+@keyframes toast-slide-out {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(120%); opacity: 0; }
 }
