@@ -133,6 +133,12 @@ export default function Settings() {
           </p>
         </div>
 
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 32 }}>
+          <button className="btn btn-primary" onClick={handleSave} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {saved ? <><CheckCircle size={16} /> Saved</> : <><Save size={16} /> Save AI Configuration</>}
+          </button>
+        </div>
+
         <div style={{ marginTop: 32, marginBottom: 16, paddingBottom: 8, borderBottom: '1px solid var(--border-color)' }}>
           <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Server size={20} /> Sandbox Configuration</h3>
           <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: 4 }}>Configure external sandbox environment endpoints (optional).</p>
@@ -162,9 +168,11 @@ export default function Settings() {
           />
         </div>
 
-        <button className="btn btn-primary" onClick={handleSave} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {saved ? <><CheckCircle size={16} /> Saved</> : <><Save size={16} /> Save Settings</>}
-        </button>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
+          <button className="btn btn-primary" onClick={handleSave} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {saved ? <><CheckCircle size={16} /> Saved</> : <><Save size={16} /> Save Sandbox API</>}
+          </button>
+        </div>
       </div>
 
       {/* Audit Chain Status */}
