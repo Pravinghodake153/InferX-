@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useApp } from '../context/useApp';
 import VerdictBadge from '../components/VerdictBadge';
 import EvaluationGraphs from '../components/EvaluationGraphs';
-import { AlertTriangle, CheckCircle, Square, Hourglass, XCircle, Zap, Search, Lock, FileText, GitCompare, ClipboardList, BarChart2, User, Bot, AlertOctagon } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Square, Hourglass, XCircle, Zap, Search, Lock, FileText, GitCompare, ClipboardList, BarChart2, User, Bot, AlertOctagon, Building2 } from 'lucide-react';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -15,6 +15,7 @@ export default function Evaluation() {
   const [showPayloadModal, setShowPayloadModal] = useState(false);
   const [showRawOutputModal, setShowRawOutputModal] = useState(false);
   const [previewPayload, setPreviewPayload] = useState(null);
+  const [activeBidderIdx, setActiveBidderIdx] = useState(0);
 
   // ── Versioning State ──
   const versions = selectedProject?.versions || [];
@@ -41,32 +42,36 @@ export default function Evaluation() {
   const canEvaluate = tenderReady && biddersReady && (reviewDone || skipConfirmed);
 
   // ── Execution Logic ──
-  const buildPayload = () => {
+  const buildPayload = (bidderIdx = activeBidderIdx) => {
     const tenderText = selectedProject.extractedText || '';
     const bidderData = selectedProject.extractedBidderData || [];
-    
     // Handle both manual uploads and Sandbox mode
-    let bidderExtracted;
-    if (isSandbox) {
-      const firstSandboxBidderId = selectedProject.sandboxBidderUbids?.[0];
-      bidderExtracted = bidderData.find(d => d.bidder_id === firstSandboxBidderId || d.bidder_id === d.bidder_ubid);
-      if (!bidderExtracted && bidderData.length > 0) bidderExtracted = bidderData[0];
-    } else {
-      const firstBidder = selectedProject.bidders?.[0];
-      bidderExtracted = bidderData.find(d => d.bidder_id === firstBidder?.id);
-    }
+    const bidderExtractedList = isSandbox 
+      ? bidderData.filter(d => {
+          const sandboxUbids = selectedProject.sandboxBidderUbids || [];
+          const ubid = sandboxUbids[bidderIdx] || (sandboxUbids.length > 0 ? sandboxUbids[0] : null);
+          return d.bidder_id === ubid || d.bidder_id === d.bidder_ubid;
+        })
+      : bidderData.filter(d => {
+          const bidders = selectedProject.bidders || [];
+          const bidder = bidders[bidderIdx] || (bidders.length > 0 ? bidders[0] : null);
+          return d.bidder_id === bidder?.id;
+        });
     
-    const bidderText = bidderExtracted?.extracted_text || '';
+    // Merge all documents for this bidder
+    const bidderText = bidderExtractedList.map(d => d.extracted_text || '').join('\n\n---\n\n');
+    const bidderName = bidderExtractedList[0]?.bidder_name || (isSandbox ? `Sandbox Bidder ${bidderIdx + 1}` : (selectedProject.bidders?.[bidderIdx]?.name || 'Unknown Bidder'));
+    const bidderId = bidderExtractedList[0]?.bidder_id || 'BID-001';
 
     if (!tenderText || !bidderText) {
-      throw new Error('Extraction data missing. Please run extraction from the Upload page first.');
+      throw new Error(`Extraction data missing for ${bidderName}. Please ensure documents are uploaded and extracted.`);
     }
 
     const applyMasks = (text) => {
       if (!text) return text;
       let newText = String(text);
       Object.entries(selectedProject?.reviewData?.manualMasks || {}).forEach(([original, maskInfo]) => {
-        const token = maskInfo.token || maskInfo; // Handle both object and string token formats
+        const token = maskInfo.token || maskInfo;
         const escapedOriginal = original.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const regex = new RegExp(escapedOriginal, 'gi');
         newText = newText.replace(regex, token);
@@ -78,8 +83,8 @@ export default function Evaluation() {
     const payload = {
       tender_text: applyMasks(tenderText),
       bidders: [{
-        bidder_id: bidderExtracted?.bidder_id || 'BID-001',
-        bidder_name: bidderExtracted?.bidder_name || 'Bidder',
+        bidder_id: bidderId,
+        bidder_name: bidderName,
         bidder_text: applyMasks(bidderText),
       }],
     };
@@ -139,6 +144,8 @@ export default function Evaluation() {
       const newVersion = {
         version_id: newVersionId,
         status: 'ACTIVE',
+        bidder_id: bidderResult.bidder_id,
+        bidder_name: bidderResult.bidder_name,
         input_data: inputDataSnapshot,
         output: evals,
         criteria: result.criteria || [],
@@ -236,24 +243,52 @@ export default function Evaluation() {
 
         {error && <div style={{ padding: '12px 16px', background: 'var(--fail-bg)', color: 'var(--fail)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: '6px' }}><XCircle size={16} /> {error}</div>}
 
-        <div style={{ display: 'flex', gap: 12 }}>
-          <button
-            className="btn btn-primary"
-            onClick={handleRunEvaluation}
-            disabled={!canEvaluate || loading}
-            style={{ padding: '12px 32px', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}
-          >
-            {loading ? <><Hourglass size={16} /> Running Evaluation...</> : <><Zap size={16} /> Run Evaluation (Output 1)</>}
-          </button>
-          
-          <button
-            className="btn btn-secondary"
-            onClick={handlePreviewPayload}
-            disabled={!canEvaluate || loading}
-            style={{ padding: '12px 20px', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}
-          >
-            <Search size={16} /> View LLM Payload Preview
-          </button>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
+          <div className="card">
+            <div className="card-header"><h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><User size={20} /> Select Bidder to Evaluate</h3></div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, padding: '4px 0' }}>
+              {(isSandbox ? (selectedProject.sandboxBidderUbids || ['BID-001']) : (selectedProject.bidders || [])).map((b, idx) => {
+                const bId = isSandbox ? b : b.id;
+                const bName = isSandbox ? `Sandbox Bidder ${idx + 1}` : b.name;
+                const isSelected = activeBidderIdx === idx;
+                return (
+                  <button 
+                    key={bId} 
+                    onClick={() => setActiveBidderIdx(idx)}
+                    className={`btn ${isSelected ? 'btn-primary' : 'btn-secondary'}`}
+                    style={{ minWidth: 160, justifyContent: 'flex-start', border: isSelected ? 'none' : '1px solid var(--border-color)' }}
+                  >
+                    <Building2 size={16} />
+                    <div style={{ textAlign: 'left' }}>
+                      <div style={{ fontSize: '0.8rem', fontWeight: 600 }}>{bName}</div>
+                      <div style={{ fontSize: '0.65rem', opacity: 0.8 }}>{bId}</div>
+                    </div>
+                    {isSelected && <CheckCircle size={14} style={{ marginLeft: 'auto' }} />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 12 }}>
+            <button
+              className="btn btn-primary"
+              onClick={handleRunEvaluation}
+              disabled={!canEvaluate || loading}
+              style={{ padding: '12px 32px', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}
+            >
+              {loading ? <><Hourglass size={16} /> Evaluating {isSandbox ? `Bidder ${activeBidderIdx + 1}` : (selectedProject.bidders?.[activeBidderIdx]?.name || 'Bidder')}...</> : <><Zap size={16} /> Run Evaluation for Selected Bidder</>}
+            </button>
+            
+            <button
+              className="btn btn-secondary"
+              onClick={handlePreviewPayload}
+              disabled={!canEvaluate || loading}
+              style={{ padding: '12px 20px', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}
+            >
+              <Search size={16} /> Preview Payload
+            </button>
+          </div>
         </div>
 
         {/* ── PAYLOAD PREVIEW MODAL ── */}
@@ -453,7 +488,10 @@ export default function Evaluation() {
       {compareMode && compareVersion ? (
         <div className="card">
           <div className="card-header" style={{ background: '#f8fafc' }}>
-            <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><BarChart2 size={20} /> Comparison View (Output {activeVersion.version_id} vs Output {compareVersion.version_id})</h3>
+            <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <BarChart2 size={20} /> 
+              Comparison View: {activeVersion.bidder_name || 'Selected Bidder'} (Output {activeVersion.version_id} vs Output {compareVersion.version_id})
+            </h3>
           </div>
           <table className="data-table" style={{ fontSize: '0.85rem' }}>
             <thead>
@@ -500,6 +538,10 @@ export default function Evaluation() {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: '3fr 1fr', gap: 24, alignItems: 'start' }}>
           <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+            <div className="card-header" style={{ borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: 12 }}>
+               <Building2 size={18} />
+               <h3 style={{ margin: 0 }}>Results for {activeVersion.bidder_name || 'Selected Bidder'}</h3>
+            </div>
             <table className="data-table" style={{ margin: 0 }}>
               <thead>
                 <tr>

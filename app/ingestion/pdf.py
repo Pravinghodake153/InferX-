@@ -340,14 +340,15 @@ def _run_ocr_image_path(image_path: str) -> str:
 
 
 def _save_image_bytes(image_bytes: bytes, page_number: int, image_index: int, ext: str, prefix: str) -> str:
+    import base64
     safe_ext = (ext or "png").lower()
     if safe_ext == "jpeg":
         safe_ext = "jpg"
-    file_name = f"{prefix}_p{page_number}_img{image_index}_{uuid.uuid4().hex[:10]}.{safe_ext}"
-    file_path = os.path.join(PUBLIC_IMAGES_DIR, file_name)
-    with open(file_path, "wb") as f:
-        f.write(image_bytes)
-    return f"/images/{file_name}"
+    
+    # Return as Base64 Data URI so it works in deployed environments (Vercel/HuggingFace)
+    # without needing a shared persistent volume or complex Firebase Storage setup.
+    b64_data = base64.b64encode(image_bytes).decode("utf-8")
+    return f"data:image/{safe_ext};base64,{b64_data}"
 
 
 def _extract_table_entries_for_page(pdf_path: str, page_number: int) -> List[Dict[str, Any]]:
@@ -1068,7 +1069,10 @@ def extract_image_layout(path: str) -> List[Dict[str, Any]]:
 
         with open(path, "rb") as f:
             image_bytes = f.read()
-        image_url = _save_image_bytes(image_bytes, 1, 1, ext, "layout")
+        
+        import base64
+        b64_data = base64.b64encode(image_bytes).decode("utf-8")
+        image_url = f"data:image/{ext};base64,{b64_data}"
 
         ocr_text = _run_ocr_image_path(path).strip()
         blocks: List[Dict[str, Any]] = [

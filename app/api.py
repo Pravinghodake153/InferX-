@@ -94,7 +94,6 @@ def _sanitize_extraction_package(package: dict) -> dict:
     clean_images = []
     for image in package.get("images", []):
         clean_image = dict(image)
-        clean_image.pop("image_bytes_b64", None)
         clean_images.append(clean_image)
 
     return {
