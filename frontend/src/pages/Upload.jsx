@@ -865,11 +865,11 @@ function extractCriteriaFromText(text) {
   // Currency/value patterns
   const valueRegex = /(?:₹|Rs\.?|INR)\s*[\d,.]+\s*(?:crore|lakh|cr|lac)?|\d+\s*(?:crore|lakh|cr|lac)|at\s+least\s+(\d+)/gi;
 
+  let counter = 1;
   for (const line of lines) {
     const match = line.match(numberedLineRegex);
     if (!match) continue;
 
-    const idx = parseInt(match[1], 10);
     const content = match[2];
     const lower = content.toLowerCase();
 
@@ -908,7 +908,7 @@ function extractCriteriaFromText(text) {
     else name = content.length > 60 ? content.slice(0, 57) + '...' : content;
 
     criteria.push({
-      criterion_id: `C${String(idx).padStart(3, '0')}`,
+      criterion_id: `C${String(counter).padStart(3, '0')}`,
       name,
       description: content,
       required_value: requiredValue || '—',
@@ -918,6 +918,7 @@ function extractCriteriaFromText(text) {
       comparison_operator: type === 'numeric' ? '>=' : 'match',
       units: category === 'financial' ? 'INR' : '',
     });
+    counter++;
   }
 
   return criteria;

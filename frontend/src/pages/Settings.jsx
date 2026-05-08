@@ -30,6 +30,8 @@ export default function Settings() {
   const [contextSize, setContextSize] = useState(100000);
   const [sandboxApiUrl, setSandboxApiUrl] = useState('');
   const [sandboxApiKey, setSandboxApiKey] = useState('');
+  const [geminiKeysInput, setGeminiKeysInput] = useState('');
+  const [geminiKeysCount, setGeminiKeysCount] = useState(0);
   const [saved, setSaved] = useState(false);
   const [chainStatus, setChainStatus] = useState(null);
   const [auditLogs, setAuditLogs] = useState([]);
@@ -88,6 +90,7 @@ export default function Settings() {
         if (res.data.context_size) setContextSize(res.data.context_size);
         if (res.data.sandbox_api_url !== undefined) setSandboxApiUrl(res.data.sandbox_api_url);
         if (res.data.sandbox_api_key !== undefined) setSandboxApiKey(res.data.sandbox_api_key);
+        if (res.data.gemini_keys_count !== undefined) setGeminiKeysCount(res.data.gemini_keys_count);
       } catch (err) {
         console.error('Failed to load settings:', err);
       }
@@ -107,13 +110,25 @@ export default function Settings() {
 
   const handleSave = async () => {
     try {
-      await SettingsAPI.update({ 
+      const keysArray = geminiKeysInput.split(',').map(k => k.trim()).filter(k => k.length > 0);
+      const payload = { 
         provider, 
         model, 
         context_size: parseInt(contextSize, 10),
         sandbox_api_url: sandboxApiUrl,
         sandbox_api_key: sandboxApiKey
-      });
+      };
+      if (keysArray.length > 0) {
+        payload.gemini_keys = keysArray;
+      }
+      
+      await SettingsAPI.update(payload);
+      
+      if (keysArray.length > 0) {
+        setGeminiKeysCount(prev => prev + keysArray.length);
+        setGeminiKeysInput('');
+      }
+      
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (err) {
@@ -176,6 +191,21 @@ export default function Settings() {
           </select>
           <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 4 }}>
             Maximum tokens allowed before automatic document chunking begins.
+          </p>
+        </div>
+
+        <div className="form-group" style={{ marginTop: 20 }}>
+          <label>Add Gemini API Keys (Quota Cycling Pool)</label>
+          <textarea 
+            className="form-input" 
+            value={geminiKeysInput} 
+            onChange={(e) => setGeminiKeysInput(e.target.value)} 
+            placeholder="AIzaSy..., AIzaSy..., AIzaSy..."
+            rows={3}
+            style={{ maxWidth: 600, fontFamily: 'monospace', fontSize: '0.8rem' }}
+          />
+          <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 4, display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Layers size={14} /> Currently active keys in pool: <strong style={{ color: 'var(--accent)' }}>{geminiKeysCount}</strong> (Comma separated. These keys will be rotated if Quota Exceeded error occurs).
           </p>
         </div>
 

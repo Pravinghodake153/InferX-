@@ -22,10 +22,41 @@ _default_model = "gemini-2.5-flash" if _active_provider == "gemini" else "anthro
 _active_model = os.getenv("LLM_MODEL", _default_model)
 _context_size = int(os.getenv("CONTEXT_SIZE", "100000"))
 
-# Configure Gemini client if key exists
+# Configure Gemini client keys
+_gemini_keys = [os.getenv("GEMINI_API_KEY")]
+if os.getenv("GEMINI_ADDITIONAL_KEYS"):
+    _gemini_keys.extend([k.strip() for k in os.getenv("GEMINI_ADDITIONAL_KEYS").split(",")])
+_gemini_keys = [k for k in _gemini_keys if k] # Filter out None or empty
+
+_current_key_idx = 0
 _gemini_client = None
-if os.getenv("GEMINI_API_KEY"):
-    _gemini_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+
+if _gemini_keys:
+    _gemini_client = genai.Client(api_key=_gemini_keys[_current_key_idx])
+
+def _switch_gemini_key():
+    global _current_key_idx, _gemini_client
+    if not _gemini_keys:
+        return False
+    _current_key_idx = (_current_key_idx + 1) % len(_gemini_keys)
+    print(f"[Gemini] 🔄 Quota reached. Switching API Key to pool index {_current_key_idx + 1}/{len(_gemini_keys)}")
+    _gemini_client = genai.Client(api_key=_gemini_keys[_current_key_idx])
+    return True
+
+def add_gemini_keys(keys: list[str]):
+    global _gemini_keys, _gemini_client, _current_key_idx
+    added = 0
+    for k in keys:
+        k = k.strip()
+        if k and k not in _gemini_keys:
+            _gemini_keys.append(k)
+            added += 1
+    
+    if added > 0:
+        print(f"[Gemini] Added {added} new API keys to the rotation pool. Total keys: {len(_gemini_keys)}")
+        if not _gemini_client and _gemini_keys:
+            _current_key_idx = 0
+            _gemini_client = genai.Client(api_key=_gemini_keys[0])
 
 # ── Collects detailed error messages for the current pipeline run ──
 _error_log = []
@@ -176,7 +207,11 @@ def _call_gemini(prompt: str, schema_class: Type[T]) -> Optional[T]:
         return None
 
     full_prompt = f"{SYSTEM_ROLE_PROMPT}\n\n{prompt}\n\nOutput ONLY valid JSON matching the exact schema."
-    for attempt in range(MAX_RETRIES):
+    
+    # Allow extra retries based on how many backup keys we have
+    max_attempts = MAX_RETRIES + len(_gemini_keys)
+    
+    for attempt in range(max_attempts):
         try:
             response = _gemini_client.models.generate_content(
                 model=_active_model,
@@ -189,8 +224,15 @@ def _call_gemini(prompt: str, schema_class: Type[T]) -> Optional[T]:
                 raise Exception("Empty response from Gemini")
             return parse_with_pydantic(response.text, schema_class)
         except Exception as e:
+            err_str = str(e).lower()
+            is_quota_error = "429" in err_str or "quota" in err_str or "rate limit" in err_str
+            
+            if is_quota_error and len(_gemini_keys) > 1:
+                _switch_gemini_key()
+                continue # Retry immediately with new key
+                
             print(f"[Gemini] Failed on attempt {attempt + 1}: {e}")
-            if attempt == MAX_RETRIES - 1:
+            if attempt >= max_attempts - 1:
                 _error_log.append(f"Gemini: {_classify_error(e)}")
                 return None
     return None

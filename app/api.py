@@ -146,6 +146,7 @@ class ProviderRequest(BaseModel):
     context_size: Optional[int] = None
     sandbox_api_url: Optional[str] = None
     sandbox_api_key: Optional[str] = None
+    gemini_keys: Optional[list[str]] = None
 
 @app.get("/api/settings")
 async def get_settings():
@@ -163,7 +164,8 @@ async def get_settings():
         "keys": {
             "openrouter": bool(os.getenv("OPENROUTER_API_KEY")),
             "gemini": bool(os.getenv("GEMINI_API_KEY"))
-        }
+        },
+        "gemini_keys_count": len(__import__("app.llm.client", fromlist=["_gemini_keys"])._gemini_keys)
     }
 
 @app.post("/api/settings")
@@ -194,6 +196,20 @@ async def update_settings(req: ProviderRequest):
     if req.sandbox_api_key is not None:
         update_env("SANDBOX_API_KEY", req.sandbox_api_key)
         os.environ["SANDBOX_API_KEY"] = req.sandbox_api_key
+        
+    if req.gemini_keys:
+        existing = os.getenv("GEMINI_ADDITIONAL_KEYS", "")
+        existing_list = [k.strip() for k in existing.split(",")] if existing else []
+        for k in req.gemini_keys:
+            if k not in existing_list:
+                existing_list.append(k)
+        
+        new_val = ",".join(existing_list)
+        update_env("GEMINI_ADDITIONAL_KEYS", new_val)
+        os.environ["GEMINI_ADDITIONAL_KEYS"] = new_val
+        
+        from app.llm.client import add_gemini_keys
+        add_gemini_keys(req.gemini_keys)
 
     if os.path.exists(env_path):
         with open(env_path, "w") as f:

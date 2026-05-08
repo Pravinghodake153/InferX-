@@ -162,23 +162,26 @@ export function AppProvider({ children }) {
   // ── Persist projects to localStorage and Firestore on every change ──
   useEffect(() => {
     if (!hydrated) return;
+    
+    const serialized = projects.map(serializeProject);
+    
+    // 1. Try Local Storage
     try {
-      const serialized = projects.map(serializeProject);
       localStorage.setItem(LS_PROJECTS, JSON.stringify(serialized));
-      
-      // Also sync to Firestore (only non-deleted projects)
-      const currentDeletedIds = deletedIdsRef.current;
-      serialized.forEach(async (p) => {
-        if (currentDeletedIds.has(p.id)) return; // Don't re-upload deleted projects
-        try {
-          await setDoc(doc(db, 'projects', p.id), p);
-        } catch (e) {
-          console.warn('Firestore sync failed for project:', p.id, e);
-        }
-      });
     } catch (e) {
-      console.warn('Failed to save projects:', e);
+      console.warn('Failed to save projects to localStorage (likely QuotaExceededError). Continuing to Firestore sync...', e);
     }
+      
+    // 2. Try Firestore (Crucial for multi-user sync)
+    const currentDeletedIds = deletedIdsRef.current;
+    serialized.forEach(async (p) => {
+      if (currentDeletedIds.has(p.id)) return; // Don't re-upload deleted projects
+      try {
+        await setDoc(doc(db, 'projects', p.id), p);
+      } catch (e) {
+        console.warn('Firestore sync failed for project:', p.id, e);
+      }
+    });
   }, [projects, hydrated]);
 
   // ── Fetch from Firestore on initial load ──

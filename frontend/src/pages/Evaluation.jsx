@@ -45,10 +45,22 @@ export default function Evaluation() {
   const canEvaluate = tenderReady && biddersReady && (reviewDone || skipConfirmed);
 
   // ── Execution Logic ──
-  const buildPayload = (bidderIdx = activeBidderIdx) => {
-    const tenderText = selectedProject.extractedText || '';
-    const bidderData = selectedProject.extractedBidderData || [];
-    // Handle both manual uploads and Sandbox mode
+  const buildPayload = async (bidderIdx = activeBidderIdx) => {
+    let tenderText = selectedProject.extractedText || '';
+    let bidderData = selectedProject.extractedBidderData || [];
+
+    // Hydrate from Firebase Storage if data was dropped due to Firestore limits
+    if ((!tenderText || bidderData.length === 0) && selectedProject.payloadUrl) {
+      try {
+        const res = await fetch(selectedProject.payloadUrl);
+        const data = await res.json();
+        tenderText = tenderText || data.tender_text || '';
+        bidderData = bidderData.length > 0 ? bidderData : (data.bidders || []);
+      } catch (e) {
+        console.warn("Failed to fetch payload from Firebase Storage", e);
+      }
+    }
+
     const bidderExtractedList = isSandbox 
       ? bidderData.filter(d => {
           const sandboxUbids = selectedProject.sandboxBidderUbids || [];
@@ -62,12 +74,12 @@ export default function Evaluation() {
         });
     
     // Merge all documents for this bidder
-    const bidderText = bidderExtractedList.map(d => d.extracted_text || '').join('\n\n---\n\n');
+    const bidderText = bidderExtractedList.map(d => d.extracted_text || d.bidder_text || '').join('\n\n---\n\n');
     const bidderName = bidderExtractedList[0]?.bidder_name || (isSandbox ? `Sandbox Bidder ${bidderIdx + 1}` : (selectedProject.bidders?.[bidderIdx]?.name || 'Unknown Bidder'));
     const bidderId = bidderExtractedList[0]?.bidder_id || 'BID-001';
 
     if (!tenderText || !bidderText) {
-      throw new Error(`Extraction data missing for ${bidderName}. Please ensure documents are uploaded and extracted.`);
+      throw new Error(`Extraction data missing for ${bidderName}. Please ensure documents are uploaded and extracted to Firebase.`);
     }
 
     const applyMasks = (text) => {
@@ -97,7 +109,7 @@ export default function Evaluation() {
     return payload;
   };
 
-  const handlePreviewPayload = () => {
+  const handlePreviewPayload = async () => {
     try {
       // If viewing a completed version, show the persisted payload
       if (activeVersion?.payload_sent) {
@@ -105,12 +117,16 @@ export default function Evaluation() {
         setShowPayloadModal(true);
         return;
       }
+      
+      setLoading(true);
       // Otherwise build a fresh preview
-      const p = buildPayload();
+      const p = await buildPayload();
       setPreviewPayload(p);
       setShowPayloadModal(true);
     } catch (err) {
       setError(err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -128,7 +144,7 @@ export default function Evaluation() {
     startProcess('evaluation', { projectId: selectedProjectId, bidderIdx: activeBidderIdx });
 
     try {
-      const payload = buildPayload();
+      const payload = await buildPayload();
 
       const res = await fetch(`${API}/api/evaluate/consolidated`, {
         method: 'POST',

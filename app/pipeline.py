@@ -330,16 +330,23 @@ def run_pipeline_from_text(tender_text: str, bidder_text: str, bidder_filename: 
                 chunk_result = call_llm(prompt, BidderEvidenceList)
                 if chunk_result and chunk_result.evidence:
                     all_evidence.extend(chunk_result.evidence)
-            # Remove duplicate criterion evidence by keeping the one with best confidence or first match
-            unique_evidence = {}
-            for ev in all_evidence:
-                cid = ev.criterion_id
-                if cid not in unique_evidence or (unique_evidence[cid].confidence == "LOW" and ev.confidence in ["HIGH", "MEDIUM"]):
-                    unique_evidence[cid] = ev
-            evidence_result = BidderEvidenceList(evidence=list(unique_evidence.values()))
         else:
             prompt = BIDDER_PARSER_PROMPT.replace("{criteria_json}", criteria_json).replace("{bidder_text}", llm_bidder_text)
-            evidence_result = call_llm(prompt, BidderEvidenceList)
+            chunk_result = call_llm(prompt, BidderEvidenceList)
+            if chunk_result and chunk_result.evidence:
+                all_evidence = chunk_result.evidence
+            else:
+                all_evidence = []
+                
+        # ── STRICT DEDUPLICATION ──
+        # Remove duplicate criterion evidence by keeping the one with best confidence or first match
+        unique_evidence = {}
+        for ev in all_evidence:
+            cid = ev.criterion_id
+            if cid not in unique_evidence or (unique_evidence[cid].confidence == "LOW" and ev.confidence in ["HIGH", "MEDIUM"]):
+                unique_evidence[cid] = ev
+                
+        evidence_result = BidderEvidenceList(evidence=list(unique_evidence.values())) if unique_evidence else None
     except Exception as e:
         evidence_result = None
         response["errors"].append(f"Bidder parsing LLM call failed: {e}")
@@ -428,7 +435,14 @@ def run_pipeline_from_text(tender_text: str, bidder_text: str, bidder_filename: 
         )
         final_eval_result = call_llm(prompt, FinalEvaluationReport)
         if final_eval_result:
-            final_eval_data = final_eval_result.model_dump().get("evaluations", [])
+            raw_evals = final_eval_result.model_dump().get("evaluations", [])
+            # ── STRICT DEDUPLICATION ──
+            unique_evals = {}
+            for ev in raw_evals:
+                cid = ev.get("criterion_id")
+                if cid and cid not in unique_evals:
+                    unique_evals[cid] = ev
+            final_eval_data = list(unique_evals.values())
     except Exception as e:
         response["errors"].append(f"Final evaluation step failed (non-critical): {e}")
         traceback.print_exc()
@@ -597,6 +611,14 @@ def run_pipeline_with_criteria(
 
     step2_time = round(time.time() - step2_start, 2)
     evidence_data = evidence_result.model_dump() if evidence_result else {"evidence": []}
+    
+    # ── STRICT DEDUPLICATION ──
+    unique_ev = {}
+    for ev in evidence_data.get("evidence", []):
+        cid = ev.get("criterion_id")
+        if cid and (cid not in unique_ev or (unique_ev[cid].get("confidence") == "LOW" and ev.get("confidence") in ["HIGH", "MEDIUM"])):
+            unique_ev[cid] = ev
+    evidence_data["evidence"] = list(unique_ev.values())
     evidence_data["evidence"] = _annotate_source_metadata(evidence_data.get("evidence", []), bidder_text)
     response["evidence"] = evidence_data["evidence"]
     response["pipeline_steps"].append({
@@ -645,7 +667,14 @@ def run_pipeline_with_criteria(
         )
         final_eval_result = call_llm(prompt, FinalEvaluationReport)
         if final_eval_result:
-            final_eval_data = final_eval_result.model_dump().get("evaluations", [])
+            raw_evals = final_eval_result.model_dump().get("evaluations", [])
+            # ── STRICT DEDUPLICATION ──
+            unique_evals = {}
+            for ev in raw_evals:
+                cid = ev.get("criterion_id")
+                if cid and cid not in unique_evals:
+                    unique_evals[cid] = ev
+            final_eval_data = list(unique_evals.values())
     except Exception as e:
         response["errors"].append(f"Final evaluation failed: {e}")
     step4_time = round(time.time() - step4_start, 2)
