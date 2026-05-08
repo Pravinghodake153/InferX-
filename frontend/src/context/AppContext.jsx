@@ -1,21 +1,19 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { AppContext } from './appContextValue';
-import { db } from '../services/firebase';
-import { collection, doc, setDoc, getDocs, deleteDoc } from 'firebase/firestore';
+import { ProjectAPI } from '../services/api';
 
 // ── localStorage keys ──
 const LS_PROJECTS = 'inferx_projects';
 const LS_SELECTED_ID = 'inferx_selected_project_id';
 const LS_SIDEBAR = 'inferx_sidebar_collapsed';
 const LS_LAST_ROUTE = 'inferx_last_route';
-const LS_DELETED_IDS = 'inferx_deleted_ids';
 const LS_ACTIVE_PROCESS = 'inferx_active_process';
 
 /**
- * Serialize project for localStorage.
- * Strips non-serializable data (File objects) but keeps everything else.
+ * Serialize project for localStorage cache.
+ * Strips non-serializable data (File objects) and heavy fields to stay under 5MB localStorage limit.
  */
-function serializeProject(project) {
+function serializeForCache(project) {
   return {
     ...project,
     // Strip File objects from tender docs (keep metadata)
@@ -31,11 +29,25 @@ function serializeProject(project) {
         file: null,
       })),
     })),
+    // Strip heavy text (saved in MongoDB separately)
+    extractedText: null,
+    extractedBidderData: [],
+    extractedContent: null,
+    // Strip heavy version payloads (saved in MongoDB separately)
+    versions: (project.versions || []).map(v => ({
+      version_id: v.version_id,
+      status: v.status,
+      bidder_id: v.bidder_id,
+      bidder_name: v.bidder_name,
+      created_at: v.created_at,
+    })),
+    // Strip consolidated report (saved in MongoDB separately)
+    consolidatedReport: null,
   };
 }
 
 /**
- * Load projects from localStorage.
+ * Load projects from localStorage (fast cache for instant UI render).
  * Returns [] if nothing stored or parse fails.
  */
 function loadProjects() {
@@ -66,22 +78,6 @@ function loadSidebar() {
   }
 }
 
-function loadDeletedIds() {
-  try {
-    const raw = localStorage.getItem(LS_DELETED_IDS);
-    if (!raw) return new Set();
-    return new Set(JSON.parse(raw));
-  } catch {
-    return new Set();
-  }
-}
-
-function saveDeletedIds(ids) {
-  try {
-    localStorage.setItem(LS_DELETED_IDS, JSON.stringify([...ids]));
-  } catch { /* ignore */ }
-}
-
 function loadActiveProcess() {
   try {
     const raw = localStorage.getItem(LS_ACTIVE_PROCESS);
@@ -95,23 +91,18 @@ function loadActiveProcess() {
 /**
  * Global application state — project-scoped, sidebar, and evaluation data.
  *
- * Rules:
- *  - 1 Tender = 1 Project
- *  - Bidders are scoped to selected_project_id
- *  - Evaluation data is project-scoped
- *  - Sidebar collapse is global UI state
- *  - ALL state persisted to localStorage on every change
- *  - State rehydrated from localStorage on app start
+ * Architecture:
+ *  - MongoDB (via backend API) is the source of truth for all data
+ *  - localStorage is a fast cache for instant UI rendering (lightweight metadata only)
+ *  - Firebase Storage is kept for file uploads (PDFs, images) only
+ *  - Heavy data (extracted text, evaluation payloads) is stored in MongoDB collections
  */
 export function AppProvider({ children }) {
   // ── Sidebar (persisted) ──
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => loadSidebar());
   const toggleSidebar = useCallback(() => setSidebarCollapsed(c => !c), []);
 
-  // ── Deleted IDs tracker (prevents Firestore from restoring deleted projects) ──
-  const deletedIdsRef = useRef(loadDeletedIds());
-
-  // ── Projects (persisted to localStorage) ──
+  // ── Projects (persisted to localStorage as cache, MongoDB as source of truth) ──
   const [projects, setProjects] = useState(() => loadProjects());
   const [selectedProjectId, setSelectedProjectId] = useState(() => {
     const id = loadSelectedId();
@@ -126,11 +117,14 @@ export function AppProvider({ children }) {
     return id;
   });
 
+  // Hydration is handled in the lazy initializer above, so always true
+  const hydrated = true;
+
   // ── Active Process State (persisted for refresh resilience) ──
   const [activeProcess, setActiveProcessState] = useState(() => loadActiveProcess());
 
-  // Hydration is handled in the lazy initializer above, so always true
-  const hydrated = true;
+  // ── Debounced MongoDB sync ref ──
+  const syncTimeoutRef = useRef(null);
 
   // ── Process management helpers ──
   const startProcess = useCallback((type, meta = {}) => {
@@ -159,47 +153,53 @@ export function AppProvider({ children }) {
     try { localStorage.removeItem(LS_ACTIVE_PROCESS); } catch { /* ignore */ }
   }, []);
 
-  // ── Persist projects to localStorage and Firestore on every change ──
+  // ── Persist projects to localStorage cache + MongoDB on every change ──
   useEffect(() => {
     if (!hydrated) return;
-    
-    const serialized = projects.map(serializeProject);
-    
-    // 1. Try Local Storage
+
+    // 1. Save lightweight cache to localStorage (instant, no size issues)
+    const cached = projects.map(serializeForCache);
     try {
-      localStorage.setItem(LS_PROJECTS, JSON.stringify(serialized));
+      localStorage.setItem(LS_PROJECTS, JSON.stringify(cached));
     } catch (e) {
-      console.warn('Failed to save projects to localStorage (likely QuotaExceededError). Continuing to Firestore sync...', e);
+      console.warn('Failed to cache projects to localStorage:', e);
     }
-      
-    // 2. Try Firestore (Crucial for multi-user sync)
-    const currentDeletedIds = deletedIdsRef.current;
-    serialized.forEach(async (p) => {
-      if (currentDeletedIds.has(p.id)) return; // Don't re-upload deleted projects
-      try {
-        await setDoc(doc(db, 'projects', p.id), p);
-      } catch (e) {
-        console.warn('Firestore sync failed for project:', p.id, e);
-      }
-    });
+
+    // 2. Debounced sync to MongoDB (via backend API)
+    if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
+    syncTimeoutRef.current = setTimeout(() => {
+      projects.forEach(async (p) => {
+        try {
+          await ProjectAPI.create(p);
+        } catch (e) {
+          // Only warn, don't block — MongoDB might be temporarily unavailable
+          if (e?.response?.status !== 400) {
+            console.warn('MongoDB sync failed for project:', p.id, e?.message || e);
+          }
+        }
+      });
+    }, 1000); // 1 second debounce to avoid spamming the backend
   }, [projects, hydrated]);
 
-  // ── Fetch from Firestore on initial load ──
+  // ── Fetch from MongoDB on initial load (source of truth) ──
   useEffect(() => {
     const fetchRemote = async () => {
       try {
-        const snapshot = await getDocs(collection(db, 'projects'));
-        if (!snapshot.empty) {
-          const fetched = snapshot.docs.map(d => d.data());
-          // Filter out any projects that were deleted locally
-          const currentDeletedIds = deletedIdsRef.current;
-          const filtered = fetched.filter(p => !currentDeletedIds.has(p.id));
+        const res = await ProjectAPI.list();
+        const fetched = res.data?.projects || [];
+        if (fetched.length > 0) {
           // Sort by createdAt desc
-          filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-          setProjects(filtered);
+          fetched.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+          setProjects(prev => {
+            // Merge: remote projects take priority, keep local-only projects
+            const remoteIds = new Set(fetched.map(p => p.id));
+            const localOnly = prev.filter(p => !remoteIds.has(p.id));
+            return [...fetched, ...localOnly];
+          });
         }
       } catch (e) {
-        console.warn('Failed to fetch projects from Firestore:', e);
+        console.warn('Failed to fetch projects from MongoDB:', e?.message || e);
+        // Fall back to localStorage (already loaded)
       }
     };
     fetchRemote();
@@ -261,9 +261,6 @@ export function AppProvider({ children }) {
         irrelevant: {}
       },
     };
-    // Remove from deleted set if re-creating with same ID (unlikely but safe)
-    deletedIdsRef.current.delete(id);
-    saveDeletedIds(deletedIdsRef.current);
 
     setProjects(prev => [newProject, ...prev]);
     setSelectedProjectId(id);
@@ -275,26 +272,15 @@ export function AppProvider({ children }) {
   }, []);
 
   const deleteProject = useCallback(async (id) => {
-    // 1. Add to deleted set immediately (prevents Firestore from restoring it)
-    deletedIdsRef.current.add(id);
-    saveDeletedIds(deletedIdsRef.current);
-
-    // 2. Remove from local state + localStorage immediately
+    // 1. Remove from local state + localStorage immediately
     setProjects(prev => prev.filter(p => p.id !== id));
     if (selectedProjectId === id) setSelectedProjectId(null);
 
-    // 3. Delete from Firestore
+    // 2. Delete from MongoDB
     try {
-      await deleteDoc(doc(db, 'projects', id));
-      // After successful Firestore deletion, we can safely clear from deleted set
-      // (to prevent the set from growing forever)
-      setTimeout(() => {
-        deletedIdsRef.current.delete(id);
-        saveDeletedIds(deletedIdsRef.current);
-      }, 5000); // 5s grace period
+      await ProjectAPI.delete(id);
     } catch (e) {
-      console.warn('Failed to delete project from Firestore:', e);
-      // Keep in deleted set so it won't be restored on next fetch
+      console.warn('Failed to delete project from MongoDB:', e);
     }
   }, [selectedProjectId]);
 

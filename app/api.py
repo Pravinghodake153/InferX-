@@ -43,6 +43,7 @@ from app.engine.export import (
 from app.adapters.sandbox_adapter import SandboxAdapter
 from app.adapters.ubid import validate_ubid, parse_ubid
 from app.services.audit_service import get_audit_service
+from app.services import mongo_service as mongo
 
 app = FastAPI(
     title="InferX — AI Tender Evaluation",
@@ -84,9 +85,29 @@ async def serve_index():
     return FileResponse(index_path)
 
 
-# Mount /static for any CSS/JS/image assets inside public/
+# Mount /static for any CSS/image assets inside public/
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 app.mount("/images", StaticFiles(directory=IMAGES_DIR), name="images")
+
+# Mount /assets for Vite's compiled JS/CSS files
+ASSETS_DIR = os.path.join(STATIC_DIR, "assets")
+os.makedirs(ASSETS_DIR, exist_ok=True)
+app.mount("/assets", StaticFiles(directory=ASSETS_DIR), name="assets")
+
+# Catch-All Route for React Router (HTML5 History API)
+# This ensures that URLs like /evaluate or /upload return the index.html
+@app.exception_handler(404)
+async def custom_404_handler(request: Request, exc: HTTPException):
+    # If the request was for an API endpoint, return JSON 404
+    if request.url.path.startswith("/api/"):
+        return JSONResponse(status_code=404, content={"detail": "Not Found"})
+    
+    # Otherwise, return the React app's index.html
+    index_path = os.path.join(STATIC_DIR, "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    
+    return JSONResponse(status_code=404, content={"detail": "Frontend not built"})
 
 
 def _sanitize_extraction_package(package: dict) -> dict:
@@ -134,6 +155,131 @@ def _extract_document_payload(file_path: str, filename: str):
     layout = text_to_layout(text)
     layout_debug = [{"page": 1, "text": text or ""}]
     return text, package, layout, layout_debug
+
+
+# ═══════════════════════════════════════════
+#  PROJECT API — MongoDB-backed CRUD
+# ═══════════════════════════════════════════
+
+@app.get("/api/projects")
+async def list_projects():
+    """List all projects from MongoDB."""
+    projects = mongo.list_projects()
+    return {"projects": projects, "count": len(projects), "db": "mongodb"}
+
+
+@app.get("/api/projects/{project_id}")
+async def get_project(project_id: str):
+    """Get a single project by ID."""
+    project = mongo.get_project(project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail=f"Project {project_id} not found.")
+    return project
+
+
+@app.post("/api/projects")
+async def create_project(request: Request):
+    """Create or update a project in MongoDB."""
+    body = await request.json()
+    if not body.get("id"):
+        raise HTTPException(status_code=400, detail="Project ID is required.")
+    success = mongo.save_project(body)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to save project to MongoDB.")
+    return {"status": "ok", "id": body["id"]}
+
+
+@app.put("/api/projects/{project_id}")
+async def update_project(project_id: str, request: Request):
+    """Update a project in MongoDB."""
+    body = await request.json()
+    body["id"] = project_id
+    success = mongo.save_project(body)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to update project.")
+    return {"status": "ok", "id": project_id}
+
+
+@app.delete("/api/projects/{project_id}")
+async def delete_project(project_id: str):
+    """Delete a project and all related data from MongoDB."""
+    success = mongo.delete_project(project_id)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to delete project.")
+    return {"status": "ok", "id": project_id}
+
+
+# ── Extraction Data ──
+
+@app.post("/api/projects/{project_id}/extraction")
+async def save_extraction(project_id: str, request: Request):
+    """Save heavy extraction data (tender text + bidder data) to MongoDB."""
+    body = await request.json()
+    success = mongo.save_extraction(project_id, body)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to save extraction data.")
+    return {"status": "ok", "project_id": project_id}
+
+
+@app.get("/api/projects/{project_id}/extraction")
+async def get_extraction(project_id: str):
+    """Get extraction data for a project."""
+    data = mongo.get_extraction(project_id)
+    if not data:
+        raise HTTPException(status_code=404, detail=f"No extraction data for project {project_id}.")
+    return data
+
+
+# ── Evaluation Versions ──
+
+@app.post("/api/projects/{project_id}/evaluation")
+async def save_evaluation(project_id: str, request: Request):
+    """Save an evaluation version to MongoDB."""
+    body = await request.json()
+    success = mongo.save_evaluation(project_id, body)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to save evaluation.")
+    return {"status": "ok", "project_id": project_id, "version_id": body.get("version_id")}
+
+
+@app.get("/api/projects/{project_id}/evaluations")
+async def get_evaluations(project_id: str):
+    """Get all evaluation versions for a project."""
+    versions = mongo.get_evaluations(project_id)
+    return {"versions": versions, "count": len(versions)}
+
+
+# ── Consolidated Report ──
+
+@app.post("/api/projects/{project_id}/consolidated")
+async def save_consolidated(project_id: str, request: Request):
+    """Save consolidated report to MongoDB."""
+    body = await request.json()
+    success = mongo.save_consolidated(project_id, body)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to save consolidated report.")
+    return {"status": "ok", "project_id": project_id}
+
+
+@app.get("/api/projects/{project_id}/consolidated")
+async def get_consolidated(project_id: str):
+    """Get consolidated report for a project."""
+    data = mongo.get_consolidated(project_id)
+    if not data:
+        raise HTTPException(status_code=404, detail=f"No consolidated report for project {project_id}.")
+    return data
+
+
+# ── MongoDB Health Check ──
+
+@app.get("/api/db/health")
+async def db_health():
+    """Check MongoDB connection status."""
+    connected = mongo.is_connected()
+    return {
+        "status": "connected" if connected else "disconnected",
+        "database": "mongodb",
+    }
 
 
 # ═══════════════════════════════════════════

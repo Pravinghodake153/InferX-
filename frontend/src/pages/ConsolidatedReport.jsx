@@ -4,8 +4,9 @@ import { useToast } from '../components/useToast';
 import VerdictBadge from '../components/VerdictBadge';
 import ConsolidatedGraphs from '../components/ConsolidatedGraphs';
 import { AlertTriangle, BarChart, CheckSquare, Square, XCircle, Hourglass, Zap, ClipboardList, Search, Lock, FileText, Table, RefreshCw, StopCircle } from 'lucide-react';
+import { ProjectAPI } from '../services/api';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API = import.meta.env.VITE_API_URL || '';
 
 export default function ConsolidatedReport() {
   const { selectedProject, updateProject, activeProcess, startProcess, clearProcess } = useApp();
@@ -16,6 +17,7 @@ export default function ConsolidatedReport() {
   const [selectedBidder, setSelectedBidder] = useState(null);
   const [abortController, setAbortController] = useState(null);
   const [showConflictModal, setShowConflictModal] = useState(false);
+  const [hydratedExtraction, setHydratedExtraction] = useState(null);
   const toast = useToast();
 
   const isSandbox = selectedProject?.sandboxMode;
@@ -23,10 +25,42 @@ export default function ConsolidatedReport() {
     ? (selectedProject?.sandboxData?.bidders || []) 
     : (selectedProject?.bidders || []);
     
-  const tenderText = selectedProject?.extractedText || '';
-  const bidderData = selectedProject?.extractedBidderData || [];
+  // Use hydrated extraction data from MongoDB if local state is empty
+  const tenderText = selectedProject?.extractedText || hydratedExtraction?.tender_text || '';
+  const bidderData = selectedProject?.extractedBidderData?.length > 0 
+    ? selectedProject.extractedBidderData 
+    : (hydratedExtraction?.bidder_data || []);
 
   const canRun = tenderText && bidders.length > 0 && bidderData.length > 0;
+
+  // ── Hydrate extraction data and consolidated report from MongoDB on load ──
+  useState(() => {
+    if (!selectedProject?.id) return;
+    
+    // Hydrate extraction data if missing from local state
+    if (!selectedProject?.extractedText || !selectedProject?.extractedBidderData?.length) {
+      ProjectAPI.getExtraction(selectedProject.id)
+        .then(res => {
+          if (res.data) {
+            setHydratedExtraction(res.data);
+            console.log('[Consolidated] Hydrated extraction from MongoDB');
+          }
+        })
+        .catch(err => console.warn('[Consolidated] MongoDB extraction hydration failed:', err?.message));
+    }
+
+    // Hydrate consolidated report if missing
+    if (!report) {
+      ProjectAPI.getConsolidated(selectedProject.id)
+        .then(res => {
+          if (res.data?.report) {
+            setReport(res.data.report);
+            console.log('[Consolidated] Hydrated report from MongoDB');
+          }
+        })
+        .catch(() => { /* No report yet — expected */ });
+    }
+  });
 
   const handleRunConsolidated = async (forceOverride = false) => {
     if (!canRun) return;
@@ -129,6 +163,13 @@ export default function ConsolidatedReport() {
         setReport({ ...currentReport }); // force re-render
         if (selectedProject) {
           updateProject(selectedProject.id, { consolidatedReport: currentReport });
+          
+          // Save to MongoDB (persistent, no size limit)
+          try {
+            await ProjectAPI.saveConsolidated(selectedProject.id, currentReport);
+          } catch (mongoErr) {
+            console.warn('[Consolidated] MongoDB save failed:', mongoErr?.message);
+          }
         }
       }
 

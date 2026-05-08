@@ -6,8 +6,9 @@ import EvaluationGraphs from '../components/EvaluationGraphs';
 import { AlertTriangle, CheckCircle, Square, Hourglass, XCircle, Zap, Search, Lock, FileText, GitCompare, ClipboardList, BarChart2, User, Bot, AlertOctagon, Building2, StopCircle } from 'lucide-react';
 import { storage } from '../services/firebase';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { ProjectAPI } from '../services/api';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API = import.meta.env.VITE_API_URL || '';
 
 export default function Evaluation() {
   const { selectedProject, updateProject, selectedProjectId, activeProcess, startProcess, clearProcess } = useApp();
@@ -51,7 +52,22 @@ export default function Evaluation() {
     let tenderText = selectedProject.extractedText || '';
     let bidderData = selectedProject.extractedBidderData || [];
 
-    // Hydrate from Firebase Storage if data was dropped due to Firestore limits
+    // Hydrate from MongoDB first (primary source for heavy data)
+    if (!tenderText || bidderData.length === 0) {
+      try {
+        const mongoRes = await ProjectAPI.getExtraction(selectedProject.id);
+        const mongoData = mongoRes.data;
+        if (mongoData) {
+          tenderText = tenderText || mongoData.tender_text || '';
+          bidderData = bidderData.length > 0 ? bidderData : (mongoData.bidder_data || []);
+          console.log('[Evaluation] Hydrated extraction from MongoDB');
+        }
+      } catch (mongoErr) {
+        console.warn('[Evaluation] MongoDB hydration failed, trying Firebase Storage...', mongoErr?.message);
+      }
+    }
+
+    // Fallback: Hydrate from Firebase Storage if MongoDB had no data
     if ((!tenderText || bidderData.length === 0) && selectedProject.payloadUrl) {
       try {
         const res = await fetch(selectedProject.payloadUrl);
@@ -245,6 +261,14 @@ export default function Evaluation() {
           versions: updatedVersions,
           extractedCriteria: result.criteria || selectedProject.extractedCriteria,
         });
+
+        // Save evaluation version to MongoDB (persistent, no size limit)
+        try {
+          await ProjectAPI.saveEvaluation(selectedProjectId, newVersion);
+          console.log('[Evaluation] Version saved to MongoDB successfully.');
+        } catch (mongoErr) {
+          console.error('[Evaluation] Failed to save evaluation to MongoDB:', mongoErr);
+        }
       }
 
       setSelectedVersionId(newVersionId);

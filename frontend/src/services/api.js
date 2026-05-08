@@ -90,6 +90,29 @@ export const SettingsAPI = {
   update: (body) => api.post('/settings', body),
 };
 
+// ── Projects (MongoDB-backed) ──
+export const ProjectAPI = {
+  list: () => api.get('/projects'),
+  get: (id) => api.get(`/projects/${id}`),
+  create: (data) => api.post('/projects', data),
+  update: (id, data) => api.put(`/projects/${id}`, data),
+  delete: (id) => api.delete(`/projects/${id}`),
+  // Extraction data (heavy)
+  saveExtraction: (id, data) => api.post(`/projects/${id}/extraction`, data, { timeout: 60000 }),
+  getExtraction: (id) => api.get(`/projects/${id}/extraction`, { timeout: 30000 }),
+  // Evaluation versions
+  saveEvaluation: (id, data) => api.post(`/projects/${id}/evaluation`, data, { timeout: 60000 }),
+  getEvaluations: (id) => api.get(`/projects/${id}/evaluations`),
+  // Consolidated report
+  saveConsolidated: (id, data) => api.post(`/projects/${id}/consolidated`, data, { timeout: 60000 }),
+  getConsolidated: (id) => api.get(`/projects/${id}/consolidated`),
+};
+
+// ── DB Health ──
+export const DBAPI = {
+  health: () => api.get('/db/health'),
+};
+
 // ── Chatbot ──
 export const ChatAPI = {
   sendMessage: (message, context) => api.post('/chat', { message, context }).then(res => res.data),

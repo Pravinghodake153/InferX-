@@ -4,7 +4,7 @@ import { useApp } from '../context/useApp';
 import { useToast } from '../components/useToast';
 import FileUpload from '../components/FileUpload';
 import SandboxMode from '../components/SandboxMode';
-import { PipelineAPI, TenderAPI } from '../services/api';
+import { PipelineAPI, TenderAPI, ProjectAPI } from '../services/api';
 import { storage } from '../services/firebase';
 import { ref, uploadBytesResumable, getDownloadURL, uploadString } from 'firebase/storage';
 import { Upload as UploadIcon, Globe, ClipboardList, Folder, Building2, FileText, CheckCircle, Hourglass, Square, StopCircle, Zap } from 'lucide-react';
@@ -423,18 +423,33 @@ export default function Upload() {
         }
       }
 
-      // Upload the payload to Firebase
+      // Upload the payload to Firebase Storage (backup/audit)
       let payloadUrl = null;
       try {
         const payloadRef = ref(storage, `payloads/extraction_${selectedProjectId}_${Date.now()}.json`);
         await uploadString(payloadRef, JSON.stringify(pipelineResult), 'raw', { contentType: 'application/json' });
         payloadUrl = await getDownloadURL(payloadRef);
-        console.log("Payload uploaded to Firebase:", payloadUrl);
+        console.log("Payload uploaded to Firebase Storage:", payloadUrl);
       } catch (fbErr) {
-        console.error("Failed to upload payload to Firebase:", fbErr);
+        console.error("Failed to upload payload to Firebase Storage:", fbErr);
       }
 
-      // Store extraction results
+      // Save heavy extraction data to MongoDB (primary storage — no size limit)
+      try {
+        await ProjectAPI.saveExtraction(selectedProjectId, {
+          tender_text: derivedText,
+          bidder_data: derivedBidderData,
+          raw_result: pipelineResult,
+          criteria: derivedCriteria,
+          criteria_method: criteriaMethod,
+          criteria_logs: criteriaLogs,
+        });
+        console.log("Extraction data saved to MongoDB successfully.");
+      } catch (mongoErr) {
+        console.error("Failed to save extraction to MongoDB:", mongoErr);
+      }
+
+      // Store extraction results in local state
       updateProject(selectedProjectId, {
         status: 'extracted',
         extractionStatus: 'complete',
