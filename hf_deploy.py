@@ -55,6 +55,7 @@ try:
         path_in_repo="frontend",
         repo_id=repo_id,
         repo_type="space",
+        ignore_patterns=["node_modules/", "dist/", ".env.local"],
         token=token
     )
     
