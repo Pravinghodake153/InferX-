@@ -1,7 +1,8 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useApp } from '../context/useApp';
+import { ProjectAPI } from '../services/api';
 import { MASK_TYPES, createMaskToken, renderMaskedText, autoDetectMasks } from './reviewUtils';
-import { Edit3, Image, BarChart2, Lock, Eye, Unlock, FileText, Play, Search, Link as LinkIcon, Shield, Edit2, Settings, Sparkles, AlertTriangle, CheckCircle, Save, XCircle } from 'lucide-react';
+import { Edit3, Image, BarChart2, Lock, Eye, FileText, Play, Search, Link as LinkIcon, Shield, Edit2, Settings, Sparkles, AlertTriangle, CheckCircle, Save, XCircle } from 'lucide-react';
 
 export default function ReviewCorrection() {
   const { selectedProject, updateProject, selectedProjectId } = useApp();
@@ -23,8 +24,7 @@ export default function ReviewCorrection() {
   const [maskEnabled, setMaskEnabled] = useState(true);
   const [manualMasks, setManualMasks] = useState(selectedProject?.reviewData?.manualMasks || {});
   const [maskCounters, setMaskCounters] = useState(selectedProject?.reviewData?.maskCounters || {});
-  const [officerPrompt, setOfficerPrompt] = useState(false);
-  const [officerInput, setOfficerInput] = useState('');
+
 
   // Edit state — keyed by docKey to avoid cross-document bleed
   const docKey = `${activeViewType}_${activeTenderDoc}_${activeBidderId || ''}`;
@@ -46,6 +46,40 @@ export default function ReviewCorrection() {
 
 
   const isSandbox = selectedProject?.sandboxMode;
+
+  // ── Hydrate extraction data from MongoDB (needed for cross-device support) ──
+  // When loading on a new device, extractedText/extractedContent are null because
+  // they are stripped from the lightweight project cache. Fetch from MongoDB.
+  useEffect(() => {
+    if (!selectedProjectId) return;
+    if (selectedProject?.extractedContent || selectedProject?.extractedText) return; // Already have data
+    if (isSandbox) return; // Sandbox doesn't use MongoDB extractions
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await ProjectAPI.getExtraction(selectedProjectId);
+        if (cancelled) return;
+        const data = res.data;
+        if (data) {
+          const updates = {};
+          if (data.tender_text) updates.extractedText = data.tender_text;
+          if (data.bidder_data) updates.extractedBidderData = data.bidder_data;
+          if (data.raw_result && !data.raw_result._stripped) updates.extractedContent = data.raw_result;
+          if (data.criteria?.length > 0) updates.extractedCriteria = data.criteria;
+          if (Object.keys(updates).length > 0) {
+            console.log('[ReviewCorrection] Hydrated extraction data from MongoDB');
+            updateProject(selectedProjectId, updates);
+          }
+        }
+      } catch (e) {
+        // Silently ignore — data might not exist yet
+        console.warn('[ReviewCorrection] MongoDB hydration skipped:', e?.message);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [selectedProjectId]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const activeBidder = useMemo(() => {
     if (!selectedProject) return null;
     if (isSandbox) {

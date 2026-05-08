@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useApp } from '../context/useApp';
 import { useToast } from '../components/useToast';
 import VerdictBadge from '../components/VerdictBadge';
@@ -17,7 +17,6 @@ export default function ConsolidatedReport() {
   const [selectedBidder, setSelectedBidder] = useState(null);
   const [abortController, setAbortController] = useState(null);
   const [showConflictModal, setShowConflictModal] = useState(false);
-  const [hydratedExtraction, setHydratedExtraction] = useState(null);
   const toast = useToast();
 
   const isSandbox = selectedProject?.sandboxMode;
@@ -26,41 +25,52 @@ export default function ConsolidatedReport() {
     : (selectedProject?.bidders || []);
     
   // Use hydrated extraction data from MongoDB if local state is empty
-  const tenderText = selectedProject?.extractedText || hydratedExtraction?.tender_text || '';
+  const tenderText = selectedProject?.extractedText || '';
   const bidderData = selectedProject?.extractedBidderData?.length > 0 
     ? selectedProject.extractedBidderData 
-    : (hydratedExtraction?.bidder_data || []);
+    : [];
 
   const canRun = tenderText && bidders.length > 0 && bidderData.length > 0;
 
   // ── Hydrate extraction data and consolidated report from MongoDB on load ──
-  useState(() => {
+  useEffect(() => {
     if (!selectedProject?.id) return;
-    
+    let cancelled = false;
+
     // Hydrate extraction data if missing from local state
     if (!selectedProject?.extractedText || !selectedProject?.extractedBidderData?.length) {
       ProjectAPI.getExtraction(selectedProject.id)
         .then(res => {
+          if (cancelled) return;
           if (res.data) {
-            setHydratedExtraction(res.data);
-            console.log('[Consolidated] Hydrated extraction from MongoDB');
+            const updates = {};
+            if (res.data.tender_text) updates.extractedText = res.data.tender_text;
+            if (res.data.bidder_data) updates.extractedBidderData = res.data.bidder_data;
+            if (Object.keys(updates).length > 0) {
+              console.log('[Consolidated] Hydrated extraction from MongoDB');
+              updateProject(selectedProject.id, updates);
+            }
           }
         })
         .catch(err => console.warn('[Consolidated] MongoDB extraction hydration failed:', err?.message));
     }
 
     // Hydrate consolidated report if missing
-    if (!report) {
+    if (!selectedProject?.consolidatedReport) {
       ProjectAPI.getConsolidated(selectedProject.id)
         .then(res => {
+          if (cancelled) return;
           if (res.data?.report) {
-            setReport(res.data.report);
             console.log('[Consolidated] Hydrated report from MongoDB');
+            updateProject(selectedProject.id, { consolidatedReport: res.data.report });
+            setReport(res.data.report);
           }
         })
         .catch(() => { /* No report yet — expected */ });
     }
-  });
+    
+    return () => { cancelled = true; };
+  }, [selectedProject?.id, selectedProject?.extractedText, selectedProject?.consolidatedReport]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleRunConsolidated = async (forceOverride = false) => {
     if (!canRun) return;

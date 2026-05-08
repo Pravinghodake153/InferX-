@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useApp } from '../context/useApp';
 import { useToast } from '../components/useToast';
 import VerdictBadge from '../components/VerdictBadge';
@@ -48,6 +48,32 @@ export default function Evaluation() {
   const canEvaluate = tenderReady && biddersReady && (reviewDone || skipConfirmed);
 
   // ── Execution Logic ──
+
+  // Hydrate evaluations from MongoDB (cross-device support)
+  useEffect(() => {
+    if (!selectedProjectId) return;
+    if (isSandbox) return;
+    
+    // Only hydrate if we have versions but they are stripped (missing output)
+    const hasStrippedVersions = versions.length > 0 && versions.some(v => !v.output);
+    if (!hasStrippedVersions) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await ProjectAPI.getEvaluations(selectedProjectId);
+        if (cancelled) return;
+        if (res.data?.versions?.length > 0) {
+          console.log('[Evaluation] Hydrated full evaluation versions from MongoDB');
+          updateProject(selectedProjectId, { versions: res.data.versions });
+        }
+      } catch (e) {
+        console.warn('[Evaluation] Failed to hydrate evaluations:', e?.message);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [selectedProjectId, versions.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const buildPayload = async (bidderIdx = activeBidderIdx) => {
     let tenderText = selectedProject.extractedText || '';
     let bidderData = selectedProject.extractedBidderData || [];
