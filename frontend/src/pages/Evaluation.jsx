@@ -152,20 +152,20 @@ export default function Evaluation() {
 
   const handlePreviewPayload = async () => {
     try {
-      // If viewing a completed version, show the persisted payload
-      if (activeVersion?.payload_sent) {
-        setPreviewPayload(activeVersion.payload_sent);
-        setShowPayloadModal(true);
-        return;
-      }
-      
       setLoading(true);
-      // Otherwise build a fresh preview
+      // Always build a fresh preview with CURRENT masks applied
       const p = await buildPayload();
       setPreviewPayload(p);
       setShowPayloadModal(true);
     } catch (err) {
-      setError(err.message);
+      // Fallback: if fresh build fails (e.g., extraction data not available),
+      // show the persisted payload from the last evaluation run
+      if (activeVersion?.payload_sent) {
+        setPreviewPayload(activeVersion.payload_sent);
+        setShowPayloadModal(true);
+      } else {
+        setError(err.message);
+      }
     } finally {
       setLoading(false);
     }

@@ -166,15 +166,17 @@ export function AppProvider({ children }) {
     }
 
     // 2. Debounced sync to MongoDB (via backend API)
+    //    IMPORTANT: We must serialize before sending to strip File objects
+    //    and heavy fields that can't be JSON-stringified or would exceed size limits.
     if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
     syncTimeoutRef.current = setTimeout(() => {
-      projects.forEach(async (p) => {
+      cached.forEach(async (serializedProject) => {
         try {
-          await ProjectAPI.create(p);
+          await ProjectAPI.create(serializedProject);
         } catch (e) {
           // Only warn, don't block — MongoDB might be temporarily unavailable
           if (e?.response?.status !== 400) {
-            console.warn('MongoDB sync failed for project:', p.id, e?.message || e);
+            console.warn('MongoDB sync failed for project:', serializedProject.id, e?.message || e);
           }
         }
       });

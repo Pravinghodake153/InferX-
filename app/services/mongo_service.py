@@ -31,8 +31,8 @@ def get_db():
         _client = MongoClient(
             mongo_uri,
             serverSelectionTimeoutMS=5000,
-            connectTimeoutMS=5000,
-            socketTimeoutMS=30000,
+            connectTimeoutMS=10000,
+            socketTimeoutMS=120000,  # 2 min — large extraction docs can take time
             maxPoolSize=10,
         )
         # Ping to verify connection
@@ -138,21 +138,38 @@ def save_extraction(project_id: str, data: dict) -> bool:
     if db is None:
         return False
     try:
+        # Strip base64 images from raw_result to stay under MongoDB's 16MB limit
+        raw_result = data.get("raw_result")
+        if raw_result:
+            raw_result = _strip_base64_from_result(raw_result)
+
         doc = {
             "project_id": project_id,
             "tender_text": data.get("tender_text", ""),
             "bidder_data": data.get("bidder_data", []),
-            "raw_result": data.get("raw_result"),  # The full pipeline result
+            "raw_result": raw_result,
             "criteria": data.get("criteria", []),
             "criteria_method": data.get("criteria_method", ""),
             "criteria_logs": data.get("criteria_logs", []),
             "saved_at": datetime.utcnow().isoformat(),
         }
+
+        # Log document size for debugging
+        import json
+        doc_size = len(json.dumps(doc, default=str))
+        size_mb = doc_size / (1024 * 1024)
+        print(f"[MongoDB] Saving extraction for {project_id}: {size_mb:.2f} MB ({doc_size:,} bytes)")
+
+        if size_mb > 15:
+            print(f"[MongoDB] WARNING: Document size {size_mb:.2f} MB approaching 16MB limit! Stripping raw_result.")
+            doc["raw_result"] = {"_stripped": True, "reason": "exceeded_size_limit", "original_size_mb": round(size_mb, 2)}
+
         db.extractions.update_one(
             {"project_id": project_id},
             {"$set": doc},
             upsert=True,
         )
+        print(f"[MongoDB] Extraction saved successfully for {project_id}")
         return True
     except Exception as e:
         print(f"[MongoDB] Failed to save extraction for {project_id}: {e}")
@@ -327,3 +344,27 @@ def _strip_heavy_fields(project: dict) -> dict:
             for b in (light["bidders"] or [])
         ]
     return light
+
+
+def _strip_base64_from_result(result) -> Any:
+    """
+    Recursively strip base64-encoded image data from the raw pipeline result.
+    This prevents large scanned documents from exceeding MongoDB's 16MB limit.
+    Text, metadata, and image URLs are preserved — only inline base64 blobs are removed.
+    """
+    if isinstance(result, dict):
+        cleaned = {}
+        for k, v in result.items():
+            if isinstance(v, str) and len(v) > 5000 and (
+                v.startswith("data:image") or
+                v.startswith("/9j/") or      # JPEG base64
+                v.startswith("iVBOR") or      # PNG base64
+                v.startswith("R0lGOD")        # GIF base64
+            ):
+                cleaned[k] = f"[BASE64_STRIPPED: {len(v):,} chars]"
+            else:
+                cleaned[k] = _strip_base64_from_result(v)
+        return cleaned
+    elif isinstance(result, list):
+        return [_strip_base64_from_result(item) for item in result]
+    return result

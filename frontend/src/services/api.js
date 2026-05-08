@@ -98,7 +98,7 @@ export const ProjectAPI = {
   update: (id, data) => api.put(`/projects/${id}`, data),
   delete: (id) => api.delete(`/projects/${id}`),
   // Extraction data (heavy)
-  saveExtraction: (id, data) => api.post(`/projects/${id}/extraction`, data, { timeout: 60000 }),
+  saveExtraction: (id, data) => api.post(`/projects/${id}/extraction`, data, { timeout: 120000 }),
   getExtraction: (id) => api.get(`/projects/${id}/extraction`, { timeout: 30000 }),
   // Evaluation versions
   saveEvaluation: (id, data) => api.post(`/projects/${id}/evaluation`, data, { timeout: 60000 }),
