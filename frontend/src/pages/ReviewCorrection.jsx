@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useApp } from '../context/useApp';
 import { MASK_TYPES, createMaskToken, renderMaskedText, autoDetectMasks } from './reviewUtils';
-import { Edit3, Image, BarChart2, Lock, Eye, Unlock, FileText, Play, Search, Link as LinkIcon, Shield, Edit2, Settings, Sparkles, AlertTriangle, CheckCircle, Save } from 'lucide-react';
+import { Edit3, Image, BarChart2, Lock, Eye, Unlock, FileText, Play, Search, Link as LinkIcon, Shield, Edit2, Settings, Sparkles, AlertTriangle, CheckCircle, Save, XCircle } from 'lucide-react';
 
 export default function ReviewCorrection() {
   const { selectedProject, updateProject, selectedProjectId } = useApp();
@@ -41,6 +41,7 @@ export default function ReviewCorrection() {
   // Selected image/table index
   const [selectedImageIdx, setSelectedImageIdx] = useState(null);
   const [selectedTableIdx] = useState(null);
+  const [fullscreenImage, setFullscreenImage] = useState(null);
 
 
 
@@ -329,7 +330,7 @@ export default function ReviewCorrection() {
                       <img src={img.image_url || ''} alt={img.image_ref} onError={e => { e.target.style.display = 'none'; }} />
                       <div className="label">
                         Page {img.pageNum} · #{img.index}
-                        {img.image_url && <a href={img.image_url} target="_blank" rel="noopener noreferrer" style={{ marginLeft: 6, color: 'var(--accent)', textDecoration: 'none' }} title="Open original image from Firebase">⛶</a>}
+                        {img.image_url && <button onClick={(e) => { e.stopPropagation(); setFullscreenImage(img.image_url); }} style={{ marginLeft: 6, color: 'var(--accent)', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }} title="Full View">⛶</button>}
                       </div>
                     </div>
                   ))}
@@ -487,6 +488,18 @@ export default function ReviewCorrection() {
           </div>
         </div>
       </div>
+      {/* Image Fullscreen Modal */}
+      {fullscreenImage && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.95)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setFullscreenImage(null)}>
+          <button 
+            onClick={() => setFullscreenImage(null)} 
+            style={{ position: 'absolute', top: 24, right: 32, background: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', padding: '8px 16px', borderRadius: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontWeight: 500 }}
+          >
+            <XCircle size={18} /> Close
+          </button>
+          <img src={fullscreenImage} alt="Full View" style={{ maxWidth: '90vw', maxHeight: '90vh', objectFit: 'contain', borderRadius: 8, boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)' }} />
+        </div>
+      )}
     </div>
   );
 }

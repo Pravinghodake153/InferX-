@@ -4,6 +4,8 @@ import { useToast } from '../components/useToast';
 import VerdictBadge from '../components/VerdictBadge';
 import EvaluationGraphs from '../components/EvaluationGraphs';
 import { AlertTriangle, CheckCircle, Square, Hourglass, XCircle, Zap, Search, Lock, FileText, GitCompare, ClipboardList, BarChart2, User, Bot, AlertOctagon, Building2, StopCircle } from 'lucide-react';
+import { storage } from '../services/firebase';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -54,8 +56,31 @@ export default function Evaluation() {
       try {
         const res = await fetch(selectedProject.payloadUrl);
         const data = await res.json();
-        tenderText = tenderText || data.tender_text || '';
-        bidderData = bidderData.length > 0 ? bidderData : (data.bidders || []);
+        
+        // Handle extraction payload format (from Upload.jsx)
+        if (data.tender_documents && !data.tender_text && !data.extracted_text) {
+          tenderText = tenderText || Object.entries(data.tender_documents)
+            .map(([name, docData]) => `[Document: ${name}]\n${docData.text || docData.package?.context_text || ''}`)
+            .join('\n\n---\n\n');
+        } else {
+          tenderText = tenderText || data.tender_text || data.extracted_text || '';
+        }
+
+        if (data.bidder_documents && (!data.bidders || data.bidders.length === 0) && (!data.bidder_data || data.bidder_data.length === 0)) {
+           bidderData = bidderData.length > 0 ? bidderData : Object.entries(data.bidder_documents).map(([bidId, docs]) => {
+             const combinedText = Object.entries(docs)
+               .map(([, docData]) => docData.text || docData.package?.context_text || '')
+               .join('\n');
+             return {
+               bidder_id: bidId,
+               bidder_name: selectedProject.bidders?.find(b => b.id === bidId)?.name || bidId,
+               extracted_text: combinedText,
+               fields: {},
+             };
+           });
+        } else {
+           bidderData = bidderData.length > 0 ? bidderData : (data.bidders || data.bidder_data || []);
+        }
       } catch (e) {
         console.warn("Failed to fetch payload from Firebase Storage", e);
       }
@@ -175,6 +200,25 @@ export default function Evaluation() {
       const newVersionId = versions.length + 1;
       const inputDataSnapshot = JSON.parse(JSON.stringify(selectedProject.reviewData || {}));
 
+      // Upload evaluation payload to Firebase Storage
+      let evaluationUrl = null;
+      try {
+        const fullSnapshot = {
+          version_id: newVersionId,
+          bidder_id: bidderResult.bidder_id,
+          bidder_name: bidderResult.bidder_name,
+          input_payload: payload,
+          output: evals,
+          full_result: bidderResult,
+          timestamp: new Date().toISOString()
+        };
+        const evalRef = ref(storage, `evaluations/eval_${selectedProjectId}_v${newVersionId}_${Date.now()}.json`);
+        await uploadString(evalRef, JSON.stringify(fullSnapshot), 'raw', { contentType: 'application/json' });
+        evaluationUrl = await getDownloadURL(evalRef);
+      } catch (fbErr) {
+        console.error("Failed to upload evaluation payload to Firebase Storage:", fbErr);
+      }
+
       const newVersion = {
         version_id: newVersionId,
         status: 'ACTIVE',
@@ -185,6 +229,7 @@ export default function Evaluation() {
         criteria: result.criteria || [],
         full_result: bidderResult,
         payload_sent: payload, // Persist for audit/preview
+        evaluationUrl: evaluationUrl,
         created_at: new Date().toISOString(),
       };
 
@@ -554,48 +599,50 @@ export default function Evaluation() {
               Comparison View: {activeVersion.bidder_name || 'Selected Bidder'} (Output {activeVersion.version_id} vs Output {compareVersion.version_id})
             </h3>
           </div>
-          <table className="data-table" style={{ fontSize: '0.85rem' }}>
-            <thead>
-              <tr>
-                <th>Criterion</th>
-                <th>Output {compareVersion.version_id}</th>
-                <th>Output {activeVersion.version_id}</th>
-                <th>Change Source</th>
-              </tr>
-            </thead>
-            <tbody>
-              {evals.map((e1, i) => {
-                const e2 = compareVersion.output.find(o => o.criteria_id === e1.criteria_id);
-                const val1 = unmaskText(e1.extracted_value);
-                const val2 = e2 ? unmaskText(e2.extracted_value) : '—';
-                const changed = val1 !== val2 || e1.result !== (e2 ? e2.result : null);
-                
-                // Determine source of change
-                let changeSource = '—';
-                if (changed) {
-                  const input1 = JSON.stringify(activeVersion.input_data?.corrections || {});
-                  const input2 = JSON.stringify(compareVersion.input_data?.corrections || {});
-                  changeSource = input1 !== input2 ? <><User size={14} className="inline-icon" /> User Edit</> : <><Bot size={14} className="inline-icon" /> AI Reasoning Change</>;
-                }
-
-                return (
-                  <tr key={i} style={{ background: changed ? '#fef3c7' : 'transparent' }}>
-                    <td><strong>{e1.criteria_name}</strong></td>
-                    <td style={{ opacity: changed ? 0.6 : 1 }}>
-                      {val2} <br/><VerdictBadge verdict={e2 ? e2.result : 'N/A'} />
-                    </td>
-                    <td>
-                      {val1} <br/><VerdictBadge verdict={e1.result} />
-                    </td>
-                    <td>
-                      {changed ? <span style={{ fontWeight: 600, color: '#b45309' }}>{changeSource}</span> : <span style={{ color: '#94a3b8' }}>Unchanged</span>}
-                    </td>
+            <div style={{ overflowX: 'auto', width: '100%' }}>
+              <table className="data-table" style={{ fontSize: '0.85rem', minWidth: 800 }}>
+                <thead>
+                  <tr>
+                    <th>Criterion</th>
+                    <th>Output {compareVersion.version_id}</th>
+                    <th>Output {activeVersion.version_id}</th>
+                    <th>Change Source</th>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                </thead>
+                <tbody>
+                  {evals.map((e1, i) => {
+                    const e2 = compareVersion.output.find(o => o.criteria_id === e1.criteria_id);
+                    const val1 = unmaskText(e1.extracted_value);
+                    const val2 = e2 ? unmaskText(e2.extracted_value) : '—';
+                    const changed = val1 !== val2 || e1.result !== (e2 ? e2.result : null);
+                    
+                    // Determine source of change
+                    let changeSource = '—';
+                    if (changed) {
+                      const input1 = JSON.stringify(activeVersion.input_data?.corrections || {});
+                      const input2 = JSON.stringify(compareVersion.input_data?.corrections || {});
+                      changeSource = input1 !== input2 ? <><User size={14} className="inline-icon" /> User Edit</> : <><Bot size={14} className="inline-icon" /> AI Reasoning Change</>;
+                    }
+
+                    return (
+                      <tr key={i} style={{ background: changed ? '#fef3c7' : 'transparent' }}>
+                        <td><strong>{e1.criteria_name}</strong></td>
+                        <td style={{ opacity: changed ? 0.6 : 1 }}>
+                          {val2} <br/><VerdictBadge verdict={e2 ? e2.result : 'N/A'} />
+                        </td>
+                        <td>
+                          {val1} <br/><VerdictBadge verdict={e1.result} />
+                        </td>
+                        <td>
+                          {changed ? <span style={{ fontWeight: 600, color: '#b45309' }}>{changeSource}</span> : <span style={{ color: '#94a3b8' }}>Unchanged</span>}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: '3fr 1fr', gap: 24, alignItems: 'start' }}>
           <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -603,31 +650,33 @@ export default function Evaluation() {
                <Building2 size={18} />
                <h3 style={{ margin: 0 }}>Results for {activeVersion.bidder_name || 'Selected Bidder'}</h3>
             </div>
-            <table className="data-table" style={{ margin: 0 }}>
-              <thead>
-                <tr>
-                  <th style={{ width: 60 }}>ID</th>
-                  <th>Criterion</th>
-                  <th>Found Value</th>
-                  <th>Verdict</th>
-                </tr>
-              </thead>
-              <tbody>
-                {evals.map((e, i) => (
-                  <tr key={i}>
-                    <td style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{e.criteria_id}</td>
-                    <td>
-                      <div style={{ fontWeight: 600 }}>{e.criteria_name}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
-                        Req: {e.required_value}
-                      </div>
-                    </td>
-                    <td>{unmaskText(e.extracted_value)}</td>
-                    <td><VerdictBadge verdict={e.result} /></td>
+            <div style={{ overflowX: 'auto', width: '100%' }}>
+              <table className="data-table" style={{ margin: 0, minWidth: 600 }}>
+                <thead>
+                  <tr>
+                    <th style={{ width: 60 }}>ID</th>
+                    <th>Criterion</th>
+                    <th>Found Value</th>
+                    <th>Verdict</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {evals.map((e, i) => (
+                    <tr key={i}>
+                      <td style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{e.criteria_id}</td>
+                      <td>
+                        <div style={{ fontWeight: 600 }}>{e.criteria_name}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                          Req: {e.required_value}
+                        </div>
+                      </td>
+                      <td>{unmaskText(e.extracted_value)}</td>
+                      <td><VerdictBadge verdict={e.result} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           {/* Verdict Panel */}

@@ -309,16 +309,20 @@ export default function Upload() {
       setExtractionProgress('Uploading extracted images to cloud storage...');
       
       const processPackage = async (pkg) => {
-        if (!pkg || !pkg.images) return;
-        for (const img of pkg.images) {
-          if (img.image_bytes_b64) {
-            try {
-              const storageRef = ref(storage, `extracted_images/${Date.now()}_${img.image_ref}`);
-              await uploadString(storageRef, img.image_bytes_b64, 'base64');
-              img.image_url = await getDownloadURL(storageRef);
-              delete img.image_bytes_b64; // Free memory
-            } catch (err) {
-              console.warn('Failed to upload extracted image to Firebase:', err);
+        if (!pkg || !pkg.pages) return;
+        for (const page of pkg.pages) {
+          if (!page.images) continue;
+          for (const img of page.images) {
+            const base64Data = img.image_bytes_b64 || (img.image_url?.startsWith('data:image/') ? img.image_url.split(',')[1] : null);
+            if (base64Data) {
+              try {
+                const storageRef = ref(storage, `extracted_images/${Date.now()}_${img.image_ref || 'img.jpeg'}`);
+                await uploadString(storageRef, base64Data, 'base64');
+                img.image_url = await getDownloadURL(storageRef);
+                delete img.image_bytes_b64; // Free memory
+              } catch (err) {
+                console.warn('Failed to upload extracted image to Firebase:', err);
+              }
             }
           }
         }

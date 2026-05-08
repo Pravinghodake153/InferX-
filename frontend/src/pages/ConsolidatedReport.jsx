@@ -262,60 +262,62 @@ export default function ConsolidatedReport() {
           <ConsolidatedGraphs report={report} />
 
           {/* Bidder Comparison Matrix */}
-          <div className="card" style={{ marginBottom: 24, overflow: 'auto' }}>
+          <div className="card" style={{ marginBottom: 24, overflow: 'hidden' }}>
             <div className="card-header">
               <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}><ClipboardList size={20} /> Bidder Comparison Matrix</h3>
               <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                 Rows = Criteria, Columns = Bidders
               </span>
             </div>
-            <table className="data-table" style={{ fontSize: '0.8rem', minWidth: 600 }}>
-              <thead>
-                <tr>
-                  <th style={{ position: 'sticky', left: 0, background: 'var(--bg-primary)', zIndex: 2, minWidth: 180 }}>Criterion</th>
-                  {report.bidder_results.map((b) => (
-                    <th key={b.bidder_id} style={{ textAlign: 'center', minWidth: 140 }}>
-                      <div style={{ fontWeight: 700 }}>{b.bidder_name}</div>
-                      <div style={{
-                        fontSize: '0.7rem', fontWeight: 700, marginTop: 4,
-                        padding: '2px 8px', borderRadius: 4, display: 'inline-block',
-                        ...verdictStyle(b.verdict)
-                      }}>
-                        {b.verdict?.replace('_', ' ')}
-                      </div>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {(report.criteria || []).map((c) => (
-                  <tr key={c.criterion_id}>
-                    <td style={{ position: 'sticky', left: 0, background: 'var(--bg-primary)', zIndex: 1, fontWeight: 600 }}>
-                      <div>{c.name}</div>
-                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 2 }}>
-                        Req: {c.required_value || '—'}
-                        {c.mandatory === false && <span style={{ marginLeft: 6, color: 'var(--review)', fontStyle: 'italic' }}>(Optional)</span>}
-                      </div>
-                    </td>
-                    {report.bidder_results.map((b) => {
-                      const ev = (b.evaluation || []).find(e => e.criterion_id === c.criterion_id);
-                      return (
-                        <td key={b.bidder_id} style={{ textAlign: 'center' }}>
-                          {ev ? (
-                            <>
-                              <div style={{ fontSize: '0.75rem', marginBottom: 4 }}>{ev.evidence_found || '—'}</div>
-                              <VerdictBadge verdict={ev.result} />
-                            </>
-                          ) : (
-                            <span style={{ color: 'var(--text-muted)' }}>—</span>
-                          )}
-                        </td>
-                      );
-                    })}
+            <div style={{ overflowX: 'auto', width: '100%' }}>
+              <table className="data-table" style={{ fontSize: '0.8rem', minWidth: 1000 }}>
+                <thead>
+                  <tr>
+                    <th style={{ position: 'sticky', left: 0, background: 'var(--bg-primary)', zIndex: 2, minWidth: 180 }}>Criterion</th>
+                    {report.bidder_results.map((b) => (
+                      <th key={b.bidder_id} style={{ textAlign: 'center', minWidth: 140 }}>
+                        <div style={{ fontWeight: 700 }}>{b.bidder_name}</div>
+                        <div style={{
+                          fontSize: '0.7rem', fontWeight: 700, marginTop: 4,
+                          padding: '2px 8px', borderRadius: 4, display: 'inline-block',
+                          ...verdictStyle(b.verdict)
+                        }}>
+                          {b.verdict?.replace('_', ' ')}
+                        </div>
+                      </th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {(report.criteria || []).map((c) => (
+                    <tr key={c.criterion_id}>
+                      <td style={{ position: 'sticky', left: 0, background: 'var(--bg-primary)', zIndex: 1, fontWeight: 600 }}>
+                        <div>{c.name}</div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                          Req: {c.required_value || '—'}
+                          {c.mandatory === false && <span style={{ marginLeft: 6, color: 'var(--review)', fontStyle: 'italic' }}>(Optional)</span>}
+                        </div>
+                      </td>
+                      {report.bidder_results.map((b) => {
+                        const ev = (b.evaluation || []).find(e => e.criterion_id === c.criterion_id);
+                        return (
+                          <td key={b.bidder_id} style={{ textAlign: 'center' }}>
+                            {ev ? (
+                              <>
+                                <div style={{ fontSize: '0.75rem', marginBottom: 4 }}>{ev.evidence_found || '—'}</div>
+                                <VerdictBadge verdict={ev.result} />
+                              </>
+                            ) : (
+                              <span style={{ color: 'var(--text-muted)' }}>—</span>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           {/* Per-Bidder Detail Cards */}
@@ -355,30 +357,32 @@ export default function ConsolidatedReport() {
                     </div>
                   </div>
 
-                  <table className="data-table" style={{ fontSize: '0.85rem' }}>
-                    <thead>
-                      <tr>
-                        <th>Criterion</th>
-                        <th>Required</th>
-                        <th>Found</th>
-                        <th>Confidence</th>
-                        <th>Verdict</th>
-                        <th>Reason</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(b.evaluation || []).map((e, i) => (
-                        <tr key={i}>
-                          <td style={{ fontWeight: 600 }}>{e.criteria_name}</td>
-                          <td>{e.required_value || '—'}</td>
-                          <td>{e.evidence_found || '—'}</td>
-                          <td>{e.confidence}</td>
-                          <td><VerdictBadge verdict={e.result} /></td>
-                          <td style={{ fontSize: '0.75rem', color: 'var(--text-muted)', maxWidth: 300 }}>{e.reason}</td>
+                  <div style={{ overflowX: 'auto', width: '100%' }}>
+                    <table className="data-table" style={{ fontSize: '0.85rem', minWidth: 800 }}>
+                      <thead>
+                        <tr>
+                          <th>Criterion</th>
+                          <th>Required</th>
+                          <th>Found</th>
+                          <th>Confidence</th>
+                          <th>Verdict</th>
+                          <th>Reason</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {(b.evaluation || []).map((e, i) => (
+                          <tr key={i}>
+                            <td style={{ fontWeight: 600 }}>{e.criteria_name}</td>
+                            <td>{e.required_value || '—'}</td>
+                            <td>{e.evidence_found || '—'}</td>
+                            <td>{e.confidence}</td>
+                            <td><VerdictBadge verdict={e.result} /></td>
+                            <td style={{ fontSize: '0.75rem', color: 'var(--text-muted)', maxWidth: 300 }}>{e.reason}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
 
                   {/* Verification */}
                   {b.verification?.length > 0 && (

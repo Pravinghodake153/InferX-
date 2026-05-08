@@ -272,7 +272,8 @@ def _run_tesseract_ocr(image_array) -> str:
             elapsed = _time.time() - t0
             print(f"[OCR] Tesseract (eng+hin) → {len(lines)} lines in {elapsed:.1f}s [confidence={avg_conf:.0f}% → {conf_label}]")
             return "\n".join(lines)
-        except Exception:
+        except Exception as _tess_exc:
+            print(f"[OCR] image_to_data failed: {_tess_exc}")
             # Fallback to simple image_to_string if dataframe parsing fails
             text = pytesseract.image_to_string(processed, lang='eng+hin')
             lines = [line.strip() for line in text.split('\n') if line.strip()]
