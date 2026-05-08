@@ -43,6 +43,10 @@ export default function Settings() {
   const [inspectProgress, setInspectProgress] = useState(0);
   const [inspectSuccess, setInspectSuccess] = useState(false);
 
+  // Health Status
+  const [healthStatus, setHealthStatus] = useState(null);
+  const [firebaseStatus, setFirebaseStatus] = useState('Unknown');
+
   const runLiveAuditInspection = () => {
     if (auditLogs.length === 0) {
       toast.warning('No Audit Logs', 'Please run an evaluation first to generate some audit entries.');
@@ -104,6 +108,17 @@ export default function Settings() {
       } catch (err) {
         console.error('Failed to load audit info:', err);
       }
+      try {
+        const healthRes = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/db/health`);
+        const healthData = await healthRes.json();
+        setHealthStatus(healthData);
+      } catch (err) {
+        console.error('Failed to load health info:', err);
+        setHealthStatus({ status: 'error', message: 'API Offline' });
+      }
+      
+      const hasFirebase = !!import.meta.env.VITE_FIREBASE_API_KEY;
+      setFirebaseStatus(hasFirebase ? 'Initialized (Keys Found)' : 'Missing Keys');
     };
     init();
   }, []);
@@ -255,6 +270,47 @@ export default function Settings() {
           <button className="btn btn-primary" onClick={handleSave} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             {saved ? <><CheckCircle size={16} /> Saved</> : <><Save size={16} /> Save Sandbox API</>}
           </button>
+        </div>
+      </div>
+
+      {/* System Health */}
+      <div className="card" style={{ marginBottom: 24, border: '1px solid var(--border-color)' }}>
+        <div className="card-header">
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Cpu size={20} /> System Health (Diagnostic)</h3>
+        </div>
+        <div style={{ padding: 16 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontWeight: 500, color: 'var(--text-main)' }}>Backend API Connection:</span>
+              <span style={{ fontWeight: 600, color: healthStatus ? (healthStatus.status === 'ok' ? 'var(--pass)' : 'var(--fail)') : 'var(--text-muted)' }}>
+                {healthStatus ? (healthStatus.status === 'ok' ? 'Online' : 'Offline / Error') : 'Checking...'}
+              </span>
+            </div>
+            
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontWeight: 500, color: 'var(--text-main)' }}>MongoDB (Database) Sync:</span>
+              <span style={{ fontWeight: 600, color: healthStatus ? (healthStatus.message.includes('Connected') ? 'var(--pass)' : 'var(--fail)') : 'var(--text-muted)' }}>
+                {healthStatus ? healthStatus.message : 'Checking...'}
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontWeight: 500, color: 'var(--text-main)' }}>Firebase (Storage) Environment:</span>
+              <span style={{ fontWeight: 600, color: firebaseStatus.includes('Found') ? 'var(--pass)' : 'var(--fail)' }}>
+                {firebaseStatus}
+              </span>
+            </div>
+            
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontWeight: 500, color: 'var(--text-main)' }}>API Base URL (VITE_API_URL):</span>
+              <code style={{ fontSize: '0.8rem', background: 'var(--bg-secondary)', padding: '2px 6px', borderRadius: 4 }}>
+                {import.meta.env.VITE_API_URL || '(Relative Path)'}
+              </code>
+            </div>
+          </div>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 16 }}>
+            Use this panel to debug if the frontend can talk to the backend, MongoDB, and if Firebase keys were baked in at build time.
+          </p>
         </div>
       </div>
 
