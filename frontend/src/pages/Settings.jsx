@@ -108,20 +108,25 @@ export default function Settings() {
       } catch (err) {
         console.error('Failed to load audit info:', err);
       }
-      try {
-        const healthRes = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/db/health`);
-        const healthData = await healthRes.json();
-        setHealthStatus(healthData);
-      } catch (err) {
-        console.error('Failed to load health info:', err);
-        setHealthStatus({ status: 'error', message: 'API Offline' });
-      }
-      
-      const hasFirebase = !!import.meta.env.VITE_FIREBASE_API_KEY;
-      setFirebaseStatus(hasFirebase ? 'Initialized (Keys Found)' : 'Missing Keys');
+      checkHealth();
     };
     init();
   }, []);
+
+  const checkHealth = async () => {
+    setHealthStatus(null); // Set to null to show 'Checking...' state
+    try {
+      const healthRes = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/db/health`);
+      const healthData = await healthRes.json();
+      setHealthStatus(healthData);
+    } catch (err) {
+      console.error('Failed to load health info:', err);
+      setHealthStatus({ status: 'error', message: 'API Offline' });
+    }
+    
+    const hasFirebase = !!import.meta.env.VITE_FIREBASE_API_KEY;
+    setFirebaseStatus(hasFirebase ? 'Initialized (Keys Found)' : 'Missing Keys');
+  };
 
   const handleSave = async () => {
     try {
@@ -275,8 +280,15 @@ export default function Settings() {
 
       {/* System Health */}
       <div className="card" style={{ marginBottom: 24, border: '1px solid var(--border-color)' }}>
-        <div className="card-header">
+        <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Cpu size={20} /> System Health (Diagnostic)</h3>
+          <button 
+            className="btn btn-secondary btn-sm" 
+            onClick={checkHealth}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <RefreshCw size={14} className={healthStatus === null ? "animate-spin" : ""} /> Run Diagnostic
+          </button>
         </div>
         <div style={{ padding: 16 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
