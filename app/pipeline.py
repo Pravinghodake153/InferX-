@@ -269,10 +269,19 @@ def run_pipeline_from_text(tender_text: str, bidder_text: str, bidder_filename: 
                 chunk_result = call_llm(prompt, TenderCriteriaList)
                 if chunk_result and chunk_result.criteria:
                     all_criteria.extend(chunk_result.criteria)
+            
+            # Ensure sequential unique IDs starting from C001
+            for idx, c in enumerate(all_criteria):
+                c.criterion_id = f"C{idx+1:03d}"
+            
             criteria_result = TenderCriteriaList(criteria=all_criteria)
         else:
             prompt = TENDER_ANALYZER_PROMPT.replace("{tender_text}", llm_tender_text)
             criteria_result = call_llm(prompt, TenderCriteriaList)
+            if criteria_result and criteria_result.criteria:
+                # Ensure sequential unique IDs starting from C001
+                for idx, c in enumerate(criteria_result.criteria):
+                    c.criterion_id = f"C{idx+1:03d}"
     except Exception as e:
         criteria_result = None
         response["errors"].append(f"Tender analysis LLM call failed: {e}")

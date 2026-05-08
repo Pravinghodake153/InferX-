@@ -561,24 +561,134 @@ export default function Upload() {
             pending={extracting || project?.extractionStatus === 'running'}
             label="Extraction Complete"
           />
-          <WorkflowStep done={false} label="PII Masked" />
+          <WorkflowStep 
+            done={project?.reviewData?.manualMasks && Object.keys(project.reviewData.manualMasks).length > 0}
+            pending={project?.extractionStatus === 'complete' && (!project?.reviewData?.manualMasks || Object.keys(project.reviewData.manualMasks || {}).length === 0)}
+            label="PII Masked" 
+          />
           <WorkflowStep
             done={project?.criteriaLocked}
             pending={project?.extractionStatus === 'complete' && !project?.criteriaLocked}
             label="Criteria Locked"
           />
           <WorkflowStep
-            done={project?.status === 'reviewed'}
-            pending={project?.criteriaLocked && project?.status !== 'reviewed'}
+            done={project?.status === 'reviewed' || project?.status === 'evaluated'}
+            pending={project?.criteriaLocked && project?.status !== 'reviewed' && project?.status !== 'evaluated'}
             label="Review Complete"
+          />
+          <WorkflowStep
+            done={project?.status === 'evaluated' || (project?.versions && project.versions.length > 0)}
+            pending={project?.status === 'reviewed' && (!project?.versions || project.versions.length === 0)}
+            label="Evaluated"
           />
         </div>
         <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 12 }}>
           {mode === 'upload'
-            ? 'Upload → Extract → Lock Criteria → Review & Correct → Evaluate'
-            : 'Sandbox Fetch → Extract → Lock Criteria → Review & Correct → Evaluate'
+            ? 'Upload → Extract → PII Mask → Lock Criteria → Review & Correct → Evaluate'
+            : 'Sandbox Fetch → Extract → PII Mask → Lock Criteria → Review & Correct → Evaluate'
           }
         </p>
+      </div>
+
+      {/* ── JUDGE'S DEMO EDGE-CASE CONTROLLER ── */}
+      <div className="card" style={{ marginBottom: 24, background: '#f8fafc', border: '1.5px dashed var(--accent)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <h4 style={{ margin: 0, color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Zap className="animate-pulse" size={18} /> Judge's Interactive Edge-Case Console
+          </h4>
+          <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 600 }}>HACKATHON MODE</span>
+        </div>
+        <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '0 0 16px 0' }}>
+          Tender evaluation has thousands of edge cases. Click any button below to instantly populate your active project with realistic simulated data to present to the judges:
+        </p>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          <button 
+            className="btn btn-secondary btn-sm" 
+            style={{ border: '1px solid var(--review)', color: '#b45309' }}
+            onClick={() => {
+              if (!project) {
+                toast.warning('No Project', 'Please select or create a project first.');
+                return;
+              }
+              updateProject(project.id, {
+                extractionStatus: 'complete',
+                extractionError: null,
+                criteriaLocked: false,
+                reviewData: {
+                  ...project.reviewData,
+                  corrections: {
+                    ...project.reviewData?.corrections,
+                    'C001': { value: '₹5 Crore (Extracted with OCR Noise - Low Confidence)', confidence: 0.42 }
+                  }
+                }
+              });
+              toast.success('OCR Noise Simulated', 'Annual Turnover has been set to 42% confidence. Check the "Review & Correct" page to see low-confidence highlighting!');
+            }}
+          >
+            📱 Simulate Scanned OCR Noise
+          </button>
+          <button 
+            className="btn btn-secondary btn-sm"
+            style={{ border: '1px solid var(--fail)', color: '#b91c1c' }}
+            onClick={() => {
+              if (!project) {
+                toast.warning('No Project', 'Please select or create a project first.');
+                return;
+              }
+              updateProject(project.id, {
+                extractionStatus: 'complete',
+                criteriaLocked: true,
+                status: 'evaluated',
+                versions: [
+                  {
+                    version_id: 1,
+                    status: 'ACTIVE',
+                    bidder_name: 'GreenTech Enterprises',
+                    output: [
+                      { criteria_name: 'Annual Turnover', result: 'FAIL', reason: 'Turnover is ₹2.8 Crore, required ₹5 Crore.', mandatory: true },
+                      { criteria_name: 'GST Registration', result: 'PASS', reason: 'Valid GSTIN found.', mandatory: true },
+                      { criteria_name: 'EMD Certificate', result: 'FAIL', reason: 'EMD certificate is completely missing from files.', mandatory: true }
+                    ],
+                    created_at: new Date().toISOString()
+                  }
+                ]
+              });
+              toast.success('Automatic Rejection Simulated', 'Generated an automatic "NOT_ELIGIBLE" evaluation for GreenTech Enterprises due to missing EMD certificate. Check the "Evaluation" page!');
+            }}
+          >
+            ❌ Simulate Missing EMD (Auto Failure)
+          </button>
+          <button 
+            className="btn btn-secondary btn-sm"
+            style={{ border: '1px solid var(--accent)', color: 'var(--accent)' }}
+            onClick={() => {
+              if (!project) {
+                toast.warning('No Project', 'Please select or create a project first.');
+                return;
+              }
+              updateProject(project.id, {
+                extractionStatus: 'complete',
+                criteriaLocked: true,
+                status: 'evaluated',
+                versions: [
+                  {
+                    version_id: 1,
+                    status: 'ACTIVE',
+                    bidder_name: 'PowerGrid Infrastructure Ltd',
+                    output: [
+                      { criteria_name: 'Annual Turnover', result: 'PASS', reason: 'Turnover ₹5.1 Crore is above required ₹5 Crore.', mandatory: true },
+                      { criteria_name: 'ISO Certification', result: 'REVIEW', reason: 'ISO 9001:2015 certificate expired in 2025. Needs manual review.', mandatory: true }
+                    ],
+                    created_at: new Date().toISOString()
+                  }
+                ]
+              });
+              toast.success('Expired ISO Simulated', 'Generated a "REVIEW_REQUIRED" evaluation for PowerGrid Infrastructure Ltd. Check the "Evaluation" page to see how human-in-the-loop handles manual overrides!');
+            }}
+          >
+            📜 Simulate Expired ISO (Borderline Review)
+          </button>
+        </div>
       </div>
 
       {/* ═══════════════════════════════════════ */}

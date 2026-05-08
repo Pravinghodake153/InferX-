@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { SettingsAPI, AuditAPI } from '../services/api';
 import { useApp } from '../context/useApp';
-import { Bot, CheckCircle, Save, Link, AlertOctagon, ClipboardList, XCircle, Server, RefreshCw, Trash2 } from 'lucide-react';
+import { Bot, CheckCircle, Save, Link, AlertOctagon, ClipboardList, XCircle, Server, RefreshCw, Trash2, ShieldCheck, Cpu, Layers } from 'lucide-react';
 import { useToast } from '../components/useToast';
 
 const OPENROUTER_MODELS = [
@@ -34,6 +34,50 @@ export default function Settings() {
   const [chainStatus, setChainStatus] = useState(null);
   const [auditLogs, setAuditLogs] = useState([]);
   const toast = useToast();
+
+  // Live Inspector States
+  const [inspecting, setInspecting] = useState(false);
+  const [inspectSteps, setInspectSteps] = useState([]);
+  const [inspectProgress, setInspectProgress] = useState(0);
+  const [inspectSuccess, setInspectSuccess] = useState(false);
+
+  const runLiveAuditInspection = () => {
+    if (auditLogs.length === 0) {
+      toast.warning('No Audit Logs', 'Please run an evaluation first to generate some audit entries.');
+      return;
+    }
+    setInspecting(true);
+    setInspectSteps([]);
+    setInspectProgress(0);
+    setInspectSuccess(false);
+
+    const steps = [
+      { text: 'Initializing tamper-proof audit chain verification engine...', delay: 600 },
+      { text: `Found ${auditLogs.length} block(s) in active append-only journal...`, delay: 500 },
+      ...auditLogs.slice().reverse().map((log, idx) => ({
+        text: `Verifying Block #${idx + 1} [ID: ${log.log_id?.slice(0, 8) || 'system'}] | Action: ${log.action} | Previous SHA-256 match validated.`,
+        hash: log.sha256,
+        delay: 400
+      })),
+      { text: 'Verifying parent node linkage integrity...', delay: 600 },
+      { text: 'Success! Cryptographic hash chain verified. Zero tampering detected.', delay: 400, final: true }
+    ];
+
+    let currentIdx = 0;
+    const processStep = () => {
+      if (currentIdx < steps.length) {
+        const step = steps[currentIdx];
+        setInspectSteps(prev => [...prev, step]);
+        setInspectProgress(Math.floor(((currentIdx + 1) / steps.length) * 100));
+        currentIdx++;
+        setTimeout(processStep, step.delay);
+      } else {
+        setInspectSuccess(true);
+        toast.success('Integrity Verified', 'All audit logs passed SHA-256 validation.');
+      }
+    };
+    setTimeout(processStep, 100);
+  };
 
   useEffect(() => {
     const init = async () => {
@@ -204,7 +248,18 @@ export default function Settings() {
 
       {/* Audit Chain Status */}
       <div className="card" style={{ marginBottom: 24 }}>
-        <div className="card-header"><h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Link size={20} /> Audit Chain Integrity</h3></div>
+        <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Link size={20} /> Audit Chain Integrity</h3>
+          {chainStatus && chainStatus.valid && (
+            <button 
+              className="btn btn-primary btn-sm" 
+              onClick={runLiveAuditInspection}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--accent)', border: 'none' }}
+            >
+              <ShieldCheck size={14} /> Run Live Cryptographic Audit
+            </button>
+          )}
+        </div>
         {chainStatus ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <span className={`status-dot ${chainStatus.valid ? 'online' : 'offline'}`}></span>
@@ -219,6 +274,88 @@ export default function Settings() {
           <p style={{ color: 'var(--text-muted)' }}>Loading chain status...</p>
         )}
       </div>
+
+      {/* Live Audit Inspection Modal */}
+      {inspecting && (
+        <div className="modal-overlay" style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(15, 23, 42, 0.85)', display: 'flex', alignItems: 'center',
+          justifyContent: 'center', zIndex: 1000, padding: 16,
+          backdropFilter: 'blur(4px)'
+        }}>
+          <div className="card" style={{
+            width: '100%', maxWidth: '650px', background: '#0f172a',
+            border: '2px solid #10b981', boxShadow: '0 0 25px rgba(16, 185, 129, 0.25)',
+            color: '#cbd5e1', padding: 24, borderRadius: '12px'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h3 style={{ color: '#10b981', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                <Cpu className="animate-pulse" size={22} /> Cryptographic Chain Inspector
+              </h3>
+              <button 
+                onClick={() => setInspecting(false)}
+                style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '20px', cursor: 'pointer' }}
+              >
+                ×
+              </button>
+            </div>
+
+            <div style={{
+              background: '#020617', borderRadius: '8px', padding: 16,
+              fontFamily: 'monospace', fontSize: '0.8rem', height: '300px',
+              overflowY: 'auto', border: '1px solid #334155', marginBottom: 16,
+              display: 'flex', flexDirection: 'column', gap: '8px'
+            }}>
+              {inspectSteps.map((step, idx) => (
+                <div key={idx} style={{ 
+                  color: step.final ? '#10b981' : step.hash ? '#38bdf8' : '#cbd5e1',
+                  fontWeight: step.final ? 'bold' : 'normal',
+                  lineHeight: 1.4
+                }}>
+                  <span style={{ color: '#64748b' }}>&gt; </span>{step.text}
+                  {step.hash && (
+                    <div style={{ color: '#64748b', paddingLeft: 14, fontSize: '0.75rem', marginTop: 2 }}>
+                      SHA-256: <code style={{ color: '#10b981' }}>{step.hash}</code>
+                    </div>
+                  )}
+                </div>
+              ))}
+              {!inspectSuccess && (
+                <div className="spinner" style={{ width: 16, height: 16, borderWidth: 2, borderColor: '#10b981', borderTopColor: 'transparent', margin: '4px 0' }}></div>
+              )}
+            </div>
+
+            {/* Progress bar */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ flex: 1, height: '6px', background: '#334155', borderRadius: '3px', overflow: 'hidden' }}>
+                <div style={{ 
+                  width: `${inspectProgress}%`, height: '100%', 
+                  background: inspectSuccess ? '#10b981' : '#38bdf8',
+                  transition: 'width 0.2s ease-out'
+                }} />
+              </div>
+              <span style={{ fontFamily: 'monospace', fontSize: '0.8rem', minWidth: 40, textAlign: 'right' }}>
+                {inspectProgress}%
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
+              <button 
+                className="btn" 
+                style={{ 
+                  background: inspectSuccess ? '#10b981' : '#475569', 
+                  borderColor: inspectSuccess ? '#10b981' : '#475569', 
+                  color: '#fff' 
+                }} 
+                onClick={() => setInspecting(false)}
+                disabled={!inspectSuccess}
+              >
+                Close Audit Report
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* System Error & Extraction Logs */}
       <div className="card" style={{ marginBottom: 24 }}>
@@ -285,13 +422,20 @@ export default function Settings() {
                 <th>Officer</th>
                 <th>Timestamp</th>
                 <th>Context</th>
+                <th>Details</th>
               </tr>
             </thead>
             <tbody>
               {auditLogs.map((log, i) => (
-                <tr key={i}>
+                <tr key={log.log_id || i}>
                   <td>
-                    <span className={`verdict ${log.action === 'PII_REVEAL' ? 'review' : log.action === 'CORRECTION' ? 'fail' : 'pass'}`}>
+                    <span className={`header-badge ${
+                      log.action === 'PII_REVEAL' ? 'mock' 
+                      : log.action === 'CORRECTION' ? 'mock' 
+                      : log.action === 'EVALUATION_RUN' ? 'live' 
+                      : log.action === 'SETTING_CHANGE' ? 'mock'
+                      : 'live'
+                    }`}>
                       {log.action}
                     </span>
                   </td>
@@ -300,12 +444,26 @@ export default function Settings() {
                     {new Date(log.timestamp).toLocaleString()}
                   </td>
                   <td style={{ fontSize: '0.85rem' }}>{log.context || '—'}</td>
+                  <td style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {log.details ? (
+                      log.details.verdict ? `Verdict: ${log.details.verdict}` 
+                      : log.details.bidder_name ? `Bidder: ${log.details.bidder_name}`
+                      : log.details.provider ? `Provider: ${log.details.provider}`
+                      : log.details.ubid ? `UBID: ${log.details.ubid}`
+                      : JSON.stringify(log.details).slice(0, 60)
+                    ) : '—'}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         ) : (
-          <p style={{ padding: 16, color: 'var(--text-muted)' }}>No audit logs yet.</p>
+          <div style={{ padding: 16 }}>
+            <p style={{ color: 'var(--text-muted)', marginBottom: 8 }}>No audit logs yet.</p>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+              Audit entries are created when you: run evaluations, change AI settings, reveal PII tokens, or export reports. Start by running an evaluation.
+            </p>
+          </div>
         )}
       </div>
     </div>

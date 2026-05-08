@@ -201,6 +201,16 @@ async def update_settings(req: ProviderRequest):
 
     try:
         set_provider(req.provider, model=req.model, context_size=req.context_size)
+        # Audit log the setting change
+        try:
+            audit = get_audit_service()
+            audit.log("SETTING_CHANGE", "system", {
+                "provider": get_provider(),
+                "model": get_model(),
+                "context_size": get_context_size(),
+            }, context="AI provider configuration updated")
+        except Exception:
+            pass
         return {"status": "ok", "provider": get_provider(), "model": get_model(), "context_size": get_context_size()}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -579,6 +589,10 @@ async def analyze_tender(request: Request):
 
         criteria_data = criteria_result.model_dump().get("criteria", [])
 
+        # Ensure sequential unique IDs starting from C001 to avoid duplicate IDs
+        for idx, c in enumerate(criteria_data):
+            c["criterion_id"] = f"C{idx+1:03d}"
+
         # Annotate source metadata
         from app.pipeline import _annotate_source_metadata
         criteria_data = _annotate_source_metadata(criteria_data, tender_text)
@@ -758,6 +772,21 @@ async def evaluate_consolidated(request: Request):
                 "review_count": sum(1 for e in evals if e.get("result") == "REVIEW"),
                 "errors": result.get("errors", []),
             })
+
+            # Audit log each bidder evaluation
+            try:
+                audit = get_audit_service()
+                audit.log("EVALUATION_RUN", "system", {
+                    "bidder_id": bidder_id,
+                    "bidder_name": bidder_name,
+                    "verdict": verdict,
+                    "criteria_count": len(shared_criteria or []),
+                    "pass": sum(1 for e in evals if e.get("result") == "PASS"),
+                    "fail": sum(1 for e in evals if e.get("result") == "FAIL"),
+                    "review": sum(1 for e in evals if e.get("result") == "REVIEW"),
+                }, context=f"Consolidated evaluation of {bidder_name}")
+            except Exception:
+                pass  # audit logging should never break evaluation
 
         print(f"\n[CONSOLIDATED] ✅ Complete — {consolidated['summary']}")
         return consolidated
