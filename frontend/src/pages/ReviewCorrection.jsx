@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useApp } from '../context/useApp';
 import { ProjectAPI } from '../services/api';
 import { MASK_TYPES, createMaskToken, renderMaskedText, autoDetectMasks } from './reviewUtils';
-import { Edit3, Image, BarChart2, Lock, Eye, FileText, Play, Search, Link as LinkIcon, Shield, Edit2, Settings, Sparkles, AlertTriangle, CheckCircle, Save, XCircle, Hourglass } from 'lucide-react';
+import { Edit3, Image, BarChart2, Lock, Eye, FileText, Play, Search, Link as LinkIcon, Shield, Settings, Sparkles, AlertTriangle, CheckCircle, Save, XCircle, Hourglass } from 'lucide-react';
 
 export default function ReviewCorrection() {
   const { selectedProject, updateProject, selectedProjectId } = useApp();
@@ -180,19 +180,7 @@ export default function ReviewCorrection() {
     setMaskPicker(null); setPopup(null);
   };
 
-  const handleEditFromPopup = () => {
-    if (!popup) return;
-    const idx = popup.blockIdx;
-    if (idx != null && idx >= 0) { setSelectedBlockIdx(idx); setCorrectionValue(corrections[idx] || textBlocks[idx]); }
-    setPopup(null);
-  };
 
-  const handleLinkFromPopup = () => {
-    if (!popup) return;
-    const idx = popup.blockIdx;
-    if (idx != null && idx >= 0) { setSelectedBlockIdx(idx); handleSelectBlock(idx); }
-    setPopup(null);
-  };
 
   const handleAutoMask = () => {
     let fullText = '';
@@ -446,11 +434,9 @@ export default function ReviewCorrection() {
 
 
             {/* SELECTION POPUP */}
-            {popup && (
+            {popup && !maskPicker && (
               <div className="selection-popup" style={{ left: popup.x, top: popup.y, transform: 'translate(-50%, -100%)' }}>
                 <button onClick={() => setMaskPicker({ x: popup.x, y: popup.y - 40, text: popup.text })} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Shield size={14} className="inline-icon"/> Mask</button>
-                <button onClick={handleLinkFromPopup} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><LinkIcon size={14} className="inline-icon"/> Link</button>
-                <button onClick={handleEditFromPopup} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Edit2 size={14} className="inline-icon"/> Edit</button>
               </div>
             )}
 
