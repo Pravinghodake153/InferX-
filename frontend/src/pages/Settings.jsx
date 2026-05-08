@@ -282,15 +282,15 @@ export default function Settings() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ fontWeight: 500, color: 'var(--text-main)' }}>Backend API Connection:</span>
-              <span style={{ fontWeight: 600, color: healthStatus ? (healthStatus.status === 'ok' ? 'var(--pass)' : 'var(--fail)') : 'var(--text-muted)' }}>
-                {healthStatus ? (healthStatus.status === 'ok' ? 'Online' : 'Offline / Error') : 'Checking...'}
+              <span style={{ fontWeight: 600, color: healthStatus ? (healthStatus.status === 'error' ? 'var(--fail)' : 'var(--pass)') : 'var(--text-muted)' }}>
+                {healthStatus ? (healthStatus.status === 'error' ? 'Offline / Error' : 'Online') : 'Checking...'}
               </span>
             </div>
             
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ fontWeight: 500, color: 'var(--text-main)' }}>MongoDB (Database) Sync:</span>
-              <span style={{ fontWeight: 600, color: healthStatus ? (healthStatus.message.includes('Connected') ? 'var(--pass)' : 'var(--fail)') : 'var(--text-muted)' }}>
-                {healthStatus ? healthStatus.message : 'Checking...'}
+              <span style={{ fontWeight: 600, color: healthStatus ? (healthStatus.status === 'connected' ? 'var(--pass)' : 'var(--fail)') : 'var(--text-muted)' }}>
+                {healthStatus ? (healthStatus.status === 'connected' ? 'Connected successfully' : 'Connection Failed') : 'Checking...'}
               </span>
             </div>
 
