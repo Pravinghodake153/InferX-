@@ -33,7 +33,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy backend code
 COPY ./app ./app
-COPY .env .env
 
 # Set up public directory for static files
 RUN mkdir -p public/assets public/images
