@@ -17,6 +17,7 @@ export default function ConsolidatedReport() {
   const [selectedBidder, setSelectedBidder] = useState(null);
   const [abortController, setAbortController] = useState(null);
   const [showConflictModal, setShowConflictModal] = useState(false);
+  const [isHydrating, setIsHydrating] = useState(false);
   const toast = useToast();
 
   const isSandbox = selectedProject?.sandboxMode;
@@ -35,39 +36,60 @@ export default function ConsolidatedReport() {
   // ── Hydrate extraction data and consolidated report from MongoDB on load ──
   useEffect(() => {
     if (!selectedProject?.id) return;
+    
+    const needsExtraction = !selectedProject?.extractedText || !selectedProject?.extractedBidderData?.length;
+    const needsReport = !selectedProject?.consolidatedReport;
+    
+    if (!needsExtraction && !needsReport) return;
+    
     let cancelled = false;
+    
+    (async () => {
+      setIsHydrating(true);
+      try {
+        const promises = [];
+        
+        // Hydrate extraction data if missing from local state
+        if (needsExtraction) {
+          promises.push(
+            ProjectAPI.getExtraction(selectedProject.id)
+              .then(res => {
+                if (cancelled) return;
+                if (res.data) {
+                  const updates = {};
+                  if (res.data.tender_text) updates.extractedText = res.data.tender_text;
+                  if (res.data.bidder_data) updates.extractedBidderData = res.data.bidder_data;
+                  if (Object.keys(updates).length > 0) {
+                    console.log('[Consolidated] Hydrated extraction from MongoDB');
+                    updateProject(selectedProject.id, updates);
+                  }
+                }
+              })
+              .catch(err => console.warn('[Consolidated] MongoDB extraction hydration failed:', err?.message))
+          );
+        }
 
-    // Hydrate extraction data if missing from local state
-    if (!selectedProject?.extractedText || !selectedProject?.extractedBidderData?.length) {
-      ProjectAPI.getExtraction(selectedProject.id)
-        .then(res => {
-          if (cancelled) return;
-          if (res.data) {
-            const updates = {};
-            if (res.data.tender_text) updates.extractedText = res.data.tender_text;
-            if (res.data.bidder_data) updates.extractedBidderData = res.data.bidder_data;
-            if (Object.keys(updates).length > 0) {
-              console.log('[Consolidated] Hydrated extraction from MongoDB');
-              updateProject(selectedProject.id, updates);
-            }
-          }
-        })
-        .catch(err => console.warn('[Consolidated] MongoDB extraction hydration failed:', err?.message));
-    }
-
-    // Hydrate consolidated report if missing
-    if (!selectedProject?.consolidatedReport) {
-      ProjectAPI.getConsolidated(selectedProject.id)
-        .then(res => {
-          if (cancelled) return;
-          if (res.data?.report) {
-            console.log('[Consolidated] Hydrated report from MongoDB');
-            updateProject(selectedProject.id, { consolidatedReport: res.data.report });
-            setReport(res.data.report);
-          }
-        })
-        .catch(() => { /* No report yet — expected */ });
-    }
+        // Hydrate consolidated report if missing
+        if (needsReport) {
+          promises.push(
+            ProjectAPI.getConsolidated(selectedProject.id)
+              .then(res => {
+                if (cancelled) return;
+                if (res.data?.report) {
+                  console.log('[Consolidated] Hydrated report from MongoDB');
+                  updateProject(selectedProject.id, { consolidatedReport: res.data.report });
+                  setReport(res.data.report);
+                }
+              })
+              .catch(() => { /* No report yet — expected */ })
+          );
+        }
+        
+        await Promise.all(promises);
+      } finally {
+        if (!cancelled) setIsHydrating(false);
+      }
+    })();
     
     return () => { cancelled = true; };
   }, [selectedProject?.id, selectedProject?.extractedText, selectedProject?.consolidatedReport]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -233,6 +255,14 @@ export default function ConsolidatedReport() {
       </div>
     );
   }
+
+  if (isHydrating) return (
+    <div style={{ height: 'calc(100vh - 120px)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
+      <Hourglass size={32} className="text-accent" style={{ animation: 'spin 2s linear infinite', marginBottom: 16 }} />
+      <h3 style={{ margin: '0 0 8px 0' }}>Loading Reports...</h3>
+      <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Fetching full consolidated report from secure storage.</p>
+    </div>
+  );
 
   return (
     <div>

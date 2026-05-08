@@ -22,6 +22,7 @@ export default function Evaluation() {
   const [previewPayload, setPreviewPayload] = useState(null);
   const [activeBidderIdx, setActiveBidderIdx] = useState(0);
   const [showConflictModal, setShowConflictModal] = useState(false);
+  const [isHydrating, setIsHydrating] = useState(false);
 
   // ── Versioning State ──
   const versions = selectedProject?.versions || [];
@@ -60,6 +61,7 @@ export default function Evaluation() {
 
     let cancelled = false;
     (async () => {
+      setIsHydrating(true);
       try {
         const res = await ProjectAPI.getEvaluations(selectedProjectId);
         if (cancelled) return;
@@ -69,6 +71,8 @@ export default function Evaluation() {
         }
       } catch (e) {
         console.warn('[Evaluation] Failed to hydrate evaluations:', e?.message);
+      } finally {
+        if (!cancelled) setIsHydrating(false);
       }
     })();
     return () => { cancelled = true; };
@@ -346,6 +350,14 @@ export default function Evaluation() {
       </div>
     );
   }
+
+  if (isHydrating) return (
+    <div style={{ height: 'calc(100vh - 120px)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
+      <Hourglass size={32} className="text-accent" style={{ animation: 'spin 2s linear infinite', marginBottom: 16 }} />
+      <h3 style={{ margin: '0 0 8px 0' }}>Loading Evaluation Data...</h3>
+      <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Fetching full evaluation histories from secure storage.</p>
+    </div>
+  );
 
   // ── NO DATA (Initial State) ──
   if (versions.length === 0) {

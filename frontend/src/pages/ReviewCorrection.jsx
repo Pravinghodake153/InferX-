@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useApp } from '../context/useApp';
 import { ProjectAPI } from '../services/api';
 import { MASK_TYPES, createMaskToken, renderMaskedText, autoDetectMasks } from './reviewUtils';
-import { Edit3, Image, BarChart2, Lock, Eye, FileText, Play, Search, Link as LinkIcon, Shield, Edit2, Settings, Sparkles, AlertTriangle, CheckCircle, Save, XCircle } from 'lucide-react';
+import { Edit3, Image, BarChart2, Lock, Eye, FileText, Play, Search, Link as LinkIcon, Shield, Edit2, Settings, Sparkles, AlertTriangle, CheckCircle, Save, XCircle, Hourglass } from 'lucide-react';
 
 export default function ReviewCorrection() {
   const { selectedProject, updateProject, selectedProjectId } = useApp();
@@ -46,6 +46,7 @@ export default function ReviewCorrection() {
 
 
   const isSandbox = selectedProject?.sandboxMode;
+  const [isHydrating, setIsHydrating] = useState(false);
 
   // ── Hydrate extraction data from MongoDB (needed for cross-device support) ──
   // When loading on a new device, extractedText/extractedContent are null because
@@ -57,6 +58,7 @@ export default function ReviewCorrection() {
 
     let cancelled = false;
     (async () => {
+      setIsHydrating(true);
       try {
         const res = await ProjectAPI.getExtraction(selectedProjectId);
         if (cancelled) return;
@@ -75,6 +77,8 @@ export default function ReviewCorrection() {
       } catch (e) {
         // Silently ignore — data might not exist yet
         console.warn('[ReviewCorrection] MongoDB hydration skipped:', e?.message);
+      } finally {
+        if (!cancelled) setIsHydrating(false);
       }
     })();
     return () => { cancelled = true; };
@@ -283,6 +287,13 @@ export default function ReviewCorrection() {
   };
 
   if (!selectedProject) return <div><h1>Pre-Evaluation Data Cleaning</h1><div className="empty-state" style={{ marginTop: 40 }}><p>No project selected.</p></div></div>;
+  if (isHydrating) return (
+    <div style={{ height: 'calc(100vh - 120px)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
+      <Hourglass size={32} className="text-accent" style={{ animation: 'spin 2s linear infinite', marginBottom: 16 }} />
+      <h3 style={{ margin: '0 0 8px 0' }}>Loading Extracted Documents...</h3>
+      <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Fetching heavy files from secure storage.</p>
+    </div>
+  );
 
   const noData = textBlocks.length === 0 && allImages.length === 0 && allTables.length === 0;
 
