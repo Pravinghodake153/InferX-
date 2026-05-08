@@ -14,7 +14,7 @@ T = TypeVar('T', bound=BaseModel)
 
 MAX_RETRIES = 2
 
-import google.generativeai as genai
+from google import genai
 
 # ── Active provider state (can be changed at runtime via API) ──
 _active_provider = os.getenv("LLM_PROVIDER", "openrouter")  # "openrouter" or "gemini"
@@ -22,9 +22,10 @@ _default_model = "gemini-2.5-flash" if _active_provider == "gemini" else "anthro
 _active_model = os.getenv("LLM_MODEL", _default_model)
 _context_size = int(os.getenv("CONTEXT_SIZE", "100000"))
 
-# Configure Gemini if key exists
+# Configure Gemini client if key exists
+_gemini_client = None
 if os.getenv("GEMINI_API_KEY"):
-    genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+    _gemini_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 # ── Collects detailed error messages for the current pipeline run ──
 _error_log = []
@@ -170,18 +171,20 @@ def _call_openrouter(prompt: str, schema_class: Type[T]) -> Optional[T]:
 #  GEMINI IMPLEMENTATION
 # ═══════════════════════════════════════════
 def _call_gemini(prompt: str, schema_class: Type[T]) -> Optional[T]:
-    if not os.getenv("GEMINI_API_KEY"):
+    if not _gemini_client:
         print("[Gemini] ERROR: GEMINI_API_KEY not set.")
         return None
 
     full_prompt = f"{SYSTEM_ROLE_PROMPT}\n\n{prompt}\n\nOutput ONLY valid JSON matching the exact schema."
-    model = genai.GenerativeModel(
-        model_name=_active_model,
-        generation_config={"response_mime_type": "application/json"}
-    )
     for attempt in range(MAX_RETRIES):
         try:
-            response = model.generate_content(full_prompt)
+            response = _gemini_client.models.generate_content(
+                model=_active_model,
+                contents=full_prompt,
+                config=genai.types.GenerateContentConfig(
+                    response_mime_type="application/json"
+                )
+            )
             if not response.text:
                 raise Exception("Empty response from Gemini")
             return parse_with_pydantic(response.text, schema_class)
