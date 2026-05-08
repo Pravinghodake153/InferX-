@@ -1223,7 +1223,6 @@ async def chat_endpoint(req: ChatRequest):
     """Context-aware AI Chatbot endpoint with fallback."""
     import os
     import requests
-    import google.generativeai as genai
     try:
         system_prompt = (
             "You are an InferX AI Chatbot, an intelligent assistant for the CRPF Tender Evaluation system. "
@@ -1234,17 +1233,34 @@ async def chat_endpoint(req: ChatRequest):
         
         full_prompt = f"System: {system_prompt}\n\nUser Message: {req.message}\n\nCurrent Context:\n{json.dumps(req.context, indent=2)}"
         
-        # Try Gemini Flash first
+        # Try Gemini Flash first using the rotating key pool
         try:
-            api_key = os.getenv("GEMINI_API_KEY")
-            if not api_key:
-                raise Exception("GEMINI_API_KEY not set")
-            genai.configure(api_key=api_key)
-            model = genai.GenerativeModel("gemini-2.5-flash")
-            response = model.generate_content(full_prompt)
-            if not response.text:
-                raise Exception("Empty response from Gemini")
-            reply = response.text
+            from app.llm.client import _gemini_client, _gemini_keys, _switch_gemini_key
+            if not _gemini_keys:
+                raise Exception("No Gemini keys configured")
+                
+            for attempt in range(len(_gemini_keys)):
+                try:
+                    if not _gemini_client:
+                        raise Exception("Gemini client not initialized")
+                    response = _gemini_client.models.generate_content(
+                        model="gemini-2.5-flash",
+                        contents=full_prompt
+                    )
+                    if not response.text:
+                        raise Exception("Empty response from Gemini")
+                    reply = response.text
+                    break
+                except Exception as e:
+                    err_str = str(e).lower()
+                    if "429" in err_str or "quota" in err_str or "rate limit" in err_str:
+                        if len(_gemini_keys) > 1:
+                            print(f"[Chatbot] Quota Exceeded, switching API key...")
+                            _switch_gemini_key()
+                            continue
+                    raise e
+            else:
+                raise Exception("All Gemini keys exhausted or failed")
         except Exception as gemini_err:
             print(f"Gemini Chatbot failed, falling back to OpenRouter: {gemini_err}")
             # Fallback to OpenRouter
