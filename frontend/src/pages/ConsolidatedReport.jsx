@@ -259,8 +259,12 @@ export default function ConsolidatedReport() {
   if (isHydrating) return (
     <div style={{ height: 'calc(100vh - 120px)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
       <Hourglass size={32} className="text-accent" style={{ animation: 'spin 2s linear infinite', marginBottom: 16 }} />
-      <h3 style={{ margin: '0 0 8px 0' }}>Loading Reports...</h3>
-      <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Fetching full consolidated report from secure storage.</p>
+      <h3 style={{ margin: '0 0 8px 0' }}>Syncing Consolidated Report...</h3>
+      <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', maxWidth: 450, textAlign: 'center', lineHeight: 1.5 }}>
+        Compiling insights across all bidders and generating the final audit matrix takes a lot of data. We are fetching the complete report from secure cloud storage.
+        <br/><br/>
+        <span style={{ color: 'var(--accent)', fontWeight: 500 }}>Hang tight! Your dashboard will be fully populated in just a moment. 📊</span>
+      </p>
     </div>
   );
 

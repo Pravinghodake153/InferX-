@@ -354,8 +354,12 @@ export default function Evaluation() {
   if (isHydrating) return (
     <div style={{ height: 'calc(100vh - 120px)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
       <Hourglass size={32} className="text-accent" style={{ animation: 'spin 2s linear infinite', marginBottom: 16 }} />
-      <h3 style={{ margin: '0 0 8px 0' }}>Loading Evaluation Data...</h3>
-      <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Fetching full evaluation histories from secure storage.</p>
+      <h3 style={{ margin: '0 0 8px 0' }}>Syncing Evaluation Results...</h3>
+      <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', maxWidth: 450, textAlign: 'center', lineHeight: 1.5 }}>
+        Evaluation data and LLM reasoning logs are quite large. We are fetching the full historical AI verdicts from secure cloud storage.
+        <br/><br/>
+        <span style={{ color: 'var(--accent)', fontWeight: 500 }}>Please wait a moment. Your evaluation data will be fully visible shortly! ⚡️</span>
+      </p>
     </div>
   );
 
