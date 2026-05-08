@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { SettingsAPI, AuditAPI } from '../services/api';
 import { useApp } from '../context/useApp';
-import { Bot, CheckCircle, Save, Link, AlertOctagon, ClipboardList, XCircle, Server, RefreshCw, Trash2, ShieldCheck, Cpu, Layers } from 'lucide-react';
+import { db } from '../services/firebase';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { Bot, CheckCircle, Save, Link, AlertOctagon, ClipboardList, XCircle, Server, RefreshCw, Trash2, ShieldCheck, Cpu, Layers, MessageSquareWarning, Send } from 'lucide-react';
 import { useToast } from '../components/useToast';
 
 const OPENROUTER_MODELS = [
@@ -9,7 +11,6 @@ const OPENROUTER_MODELS = [
   { id: 'anthropic/claude-3.5-sonnet', label: 'Claude 3.5 Sonnet (Premium)' },
   { id: 'openai/gpt-4o-mini', label: 'GPT-4o Mini (Balanced)' },
   { id: 'openai/gpt-4o', label: 'GPT-4o (Premium)' },
-  { id: 'deepseek/deepseek-chat', label: 'DeepSeek-V3 (Chat)' },
   { id: 'deepseek/deepseek-chat', label: 'DeepSeek V4 Flash (Chat)' },
   { id: 'deepseek/deepseek-r1', label: 'DeepSeek V4 Pro (Reasoning)' },
   { id: 'google/gemini-2.0-flash-exp:free', label: 'Gemini 2.0 Flash (Free)' },
@@ -18,8 +19,10 @@ const OPENROUTER_MODELS = [
 ];
 
 const GEMINI_MODELS = [
+  { id: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro Preview (Latest)' },
+  { id: 'gemini-3.1-pro-preview-customtools', label: 'Gemini 3.1 Pro Custom Tools (Agentic)' },
+  { id: 'gemini-3.1-flash-lite-preview', label: 'Gemini 3.1 Flash Lite (Ultra Fast)' },
   { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (Fast)' },
-  { id: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash (Experimental)' },
   { id: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro (Heavy)' },
 ];
 
@@ -46,6 +49,56 @@ export default function Settings() {
   // Health Status
   const [healthStatus, setHealthStatus] = useState(null);
   const [firebaseStatus, setFirebaseStatus] = useState('Unknown');
+
+  // Issue Tracker States
+  const [issueOpen, setIssueOpen] = useState(false);
+  const [issuePage, setIssuePage] = useState('Dashboard');
+  const [issueDetails, setIssueDetails] = useState('');
+  const [issueSeverity, setIssueSeverity] = useState('Medium');
+  const [issueType, setIssueType] = useState('Bug Report');
+  const [officerName, setOfficerName] = useState('');
+  const [officerEmail, setOfficerEmail] = useState('');
+  const [officerId, setOfficerId] = useState('');
+  const [issueSubmitting, setIssueSubmitting] = useState(false);
+  const [issueSubmitted, setIssueSubmitted] = useState(false);
+
+  const handleIssueSubmit = async () => {
+    if (!issueDetails.trim() || !officerName.trim() || !officerEmail.trim()) {
+      toast.warning('Missing Fields', 'Please fill in your Name, Email, and Issue Details.');
+      return;
+    }
+    setIssueSubmitting(true);
+    try {
+      await addDoc(collection(db, 'officer_issues'), {
+        officer_name: officerName.trim(),
+        officer_email: officerEmail.trim(),
+        officer_id: officerId.trim() || 'NOT_PROVIDED',
+        issue_page: issuePage,
+        issue_type: issueType,
+        severity: issueSeverity,
+        details: issueDetails.trim(),
+        status: 'open',
+        created_at: serverTimestamp(),
+        metadata: {
+          project_id: selectedProject?.id || 'N/A',
+          project_name: selectedProject?.name || 'N/A',
+          current_model: model,
+          current_provider: provider,
+          platform: navigator.userAgent,
+          url: window.location.href,
+        },
+      });
+      setIssueSubmitted(true);
+      setIssueDetails('');
+      toast.success('Issue Submitted', 'Your feedback has been recorded. The development team will review it shortly.');
+      setTimeout(() => { setIssueSubmitted(false); setIssueOpen(false); }, 2500);
+    } catch (err) {
+      console.error('Failed to submit issue:', err);
+      toast.error('Submission Failed', `Could not save issue: ${err.message}`);
+    } finally {
+      setIssueSubmitting(false);
+    }
+  };
 
   const runLiveAuditInspection = () => {
     if (auditLogs.length === 0) {
@@ -85,6 +138,21 @@ export default function Settings() {
     setTimeout(processStep, 100);
   };
 
+  const checkHealth = async () => {
+    setHealthStatus(null);
+    try {
+      const healthRes = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/db/health`);
+      const healthData = await healthRes.json();
+      setHealthStatus(healthData);
+    } catch (err) {
+      console.error('Failed to load health info:', err);
+      setHealthStatus({ status: 'error', message: 'API Offline' });
+    }
+    
+    const hasFirebase = !!import.meta.env.VITE_FIREBASE_API_KEY;
+    setFirebaseStatus(hasFirebase ? 'Initialized (Keys Found)' : 'Missing Keys');
+  };
+
   useEffect(() => {
     const init = async () => {
       try {
@@ -112,21 +180,6 @@ export default function Settings() {
     };
     init();
   }, []);
-
-  const checkHealth = async () => {
-    setHealthStatus(null); // Set to null to show 'Checking...' state
-    try {
-      const healthRes = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/db/health`);
-      const healthData = await healthRes.json();
-      setHealthStatus(healthData);
-    } catch (err) {
-      console.error('Failed to load health info:', err);
-      setHealthStatus({ status: 'error', message: 'API Offline' });
-    }
-    
-    const hasFirebase = !!import.meta.env.VITE_FIREBASE_API_KEY;
-    setFirebaseStatus(hasFirebase ? 'Initialized (Keys Found)' : 'Missing Keys');
-  };
 
   const handleSave = async () => {
     try {
@@ -561,6 +614,156 @@ export default function Settings() {
             <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
               Audit entries are created when you: run evaluations, change AI settings, reveal PII tokens, or export reports. Start by running an evaluation.
             </p>
+          </div>
+        )}
+      </div>
+
+      {/* Officer Feedback & Issue Tracker */}
+      <div className="card" style={{ marginBottom: 24, border: '1px solid var(--accent)' }}>
+        <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <MessageSquareWarning size={20} /> Officer Feedback & Issue Tracker
+          </h3>
+          <button 
+            className="btn btn-primary btn-sm" 
+            onClick={() => { setIssueOpen(!issueOpen); setIssueSubmitted(false); }}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            {issueOpen ? <XCircle size={14} /> : <MessageSquareWarning size={14} />}
+            {issueOpen ? 'Close' : 'Raise an Issue'}
+          </button>
+        </div>
+
+        {!issueOpen && (
+          <div style={{ padding: 16 }}>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+              Use this section to report system issues, incorrect verdicts, missing data, or feature requests. 
+              All submissions are stored securely and reviewed by the development team for continuous system improvement.
+            </p>
+          </div>
+        )}
+
+        {issueOpen && (
+          <div style={{ padding: 16 }}>
+            {issueSubmitted ? (
+              <div style={{ textAlign: 'center', padding: 32 }}>
+                <CheckCircle size={48} style={{ color: 'var(--pass)', marginBottom: 12 }} />
+                <h3 style={{ color: 'var(--pass)', marginBottom: 8 }}>Issue Submitted Successfully</h3>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Thank you for your feedback. The team will review and respond.</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {/* Row 1: Officer Info */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '0.8rem', marginBottom: 4 }}>Officer Name *</label>
+                    <input 
+                      type="text" className="form-input" 
+                      value={officerName} onChange={(e) => setOfficerName(e.target.value)}
+                      placeholder="e.g. Sub-Inspector R. Sharma"
+                    />
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '0.8rem', marginBottom: 4 }}>Email (Gmail) *</label>
+                    <input 
+                      type="email" className="form-input" 
+                      value={officerEmail} onChange={(e) => setOfficerEmail(e.target.value)}
+                      placeholder="officer@crpf.gov.in"
+                    />
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '0.8rem', marginBottom: 4 }}>Officer ID / Badge No.</label>
+                    <input 
+                      type="text" className="form-input" 
+                      value={officerId} onChange={(e) => setOfficerId(e.target.value)}
+                      placeholder="e.g. CRPF-2024-1089"
+                    />
+                  </div>
+                </div>
+
+                {/* Row 2: Issue Meta */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '0.8rem', marginBottom: 4 }}>Issue Page</label>
+                    <select className="form-input" value={issuePage} onChange={(e) => setIssuePage(e.target.value)}>
+                      <option value="Dashboard">Dashboard</option>
+                      <option value="Upload">Upload & Document Ingestion</option>
+                      <option value="Tender Extraction">Tender / Criteria Extraction</option>
+                      <option value="Review & Correction">Review & Correction</option>
+                      <option value="Evaluation">Evaluation & Verdicts</option>
+                      <option value="Consolidated Report">Consolidated Report</option>
+                      <option value="Settings">Settings & Configuration</option>
+                      <option value="Chatbot">AI Chatbot</option>
+                      <option value="Other">Other / General</option>
+                    </select>
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '0.8rem', marginBottom: 4 }}>Issue Type</label>
+                    <select className="form-input" value={issueType} onChange={(e) => setIssueType(e.target.value)}>
+                      <option value="Bug Report">Bug Report</option>
+                      <option value="Incorrect Verdict">Incorrect Verdict</option>
+                      <option value="Missing Data">Missing Data / Extraction Failure</option>
+                      <option value="Ambiguous Criteria">Ambiguous Criteria</option>
+                      <option value="UI/UX Issue">UI/UX Issue</option>
+                      <option value="Performance">Performance / Slow Loading</option>
+                      <option value="Feature Request">Feature Request</option>
+                      <option value="Security Concern">Security Concern</option>
+                    </select>
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '0.8rem', marginBottom: 4 }}>Severity</label>
+                    <select className="form-input" value={issueSeverity} onChange={(e) => setIssueSeverity(e.target.value)}>
+                      <option value="Critical">🔴 Critical — System Unusable</option>
+                      <option value="High">🟠 High — Major Feature Broken</option>
+                      <option value="Medium">🟡 Medium — Partial Impact</option>
+                      <option value="Low">🟢 Low — Minor / Cosmetic</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Row 3: Details */}
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label style={{ fontSize: '0.8rem', marginBottom: 4 }}>Issue Details *</label>
+                  <textarea 
+                    className="form-input" 
+                    value={issueDetails} onChange={(e) => setIssueDetails(e.target.value)}
+                    placeholder="Describe the issue in detail. Include steps to reproduce if possible. Example: 'On the Evaluation page, Bidder 3 was marked as NOT_ELIGIBLE for the turnover criterion, but the document clearly shows ₹8.2 Cr which exceeds the ₹5 Cr threshold...'"
+                    rows={5}
+                    style={{ resize: 'vertical' }}
+                  />
+                </div>
+
+                {/* Auto-attached metadata preview */}
+                <div style={{ background: 'var(--bg-secondary)', borderRadius: 8, padding: 12, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  <strong style={{ color: 'var(--text-secondary)' }}>Auto-attached Metadata:</strong>
+                  <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 6 }}>
+                    <span>Project: <strong>{selectedProject?.name || 'None'}</strong></span>
+                    <span>Model: <strong>{model}</strong></span>
+                    <span>Provider: <strong>{provider.toUpperCase()}</strong></span>
+                    <span>Timestamp: <strong>{new Date().toLocaleString()}</strong></span>
+                  </div>
+                </div>
+
+                {/* Submit */}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+                  <button className="btn btn-secondary" onClick={() => setIssueOpen(false)}>
+                    Cancel
+                  </button>
+                  <button 
+                    className="btn btn-primary" 
+                    onClick={handleIssueSubmit}
+                    disabled={issueSubmitting}
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                  >
+                    {issueSubmitting ? (
+                      <><div className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }}></div> Submitting...</>
+                    ) : (
+                      <><Send size={16} /> Submit Issue</>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
