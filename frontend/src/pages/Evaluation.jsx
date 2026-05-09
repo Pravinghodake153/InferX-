@@ -55,9 +55,10 @@ export default function Evaluation() {
     if (!selectedProjectId) return;
     if (isSandbox) return;
     
-    // Only hydrate if we have versions but they are stripped (missing output)
-    const hasStrippedVersions = versions.length > 0 && versions.some(v => !v.output);
-    if (!hasStrippedVersions) return;
+    // Hydrate if we have NO versions locally (they might exist on server),
+    // OR if we have versions but they are stripped (missing output).
+    const needsHydration = versions.length === 0 || versions.some(v => !v.output);
+    if (!needsHydration) return;
 
     let cancelled = false;
     (async () => {
