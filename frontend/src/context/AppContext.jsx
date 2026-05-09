@@ -66,6 +66,8 @@ function loadSelectedId() {
   } catch {
     return null;
   }
+}
+
 /**
  * Global application state — project-scoped, sidebar, and evaluation data.
  *
@@ -233,10 +235,6 @@ export function AppProvider({ children }) {
     }
   }, [selectedProjectId, hydrated]);
 
-  // ── Persist sidebar ──
-  useEffect(() => {
-    localStorage.setItem(LS_SIDEBAR, String(sidebarCollapsed));
-  }, [sidebarCollapsed]);
 
   // ── Save last route ──
   const setLastRoute = useCallback((route) => {
