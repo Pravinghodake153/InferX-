@@ -55,7 +55,11 @@ export default function Header() {
         )}
       </div>
       <div className="header-right">
-        <span className="header-badge mock">Sandbox (Synthetic Data)</span>
+        {selectedProject?.id?.startsWith('sandbox_') ? (
+          <span className="header-badge mock" style={{ background: 'var(--accent-light)', color: 'var(--accent)', border: '1px dashed var(--accent)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 600 }}>Sandbox</span>
+        ) : (
+          <span className="header-badge live" style={{ background: '#dcfce3', color: '#166534', border: '1px solid #166534', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 600 }}>Live</span>
+        )}
         <button className="btn btn-sm btn-secondary" onClick={toggleTheme}>
           {theme === 'light' ? <Moon size={14} /> : <Sun size={14} />}
         </button>

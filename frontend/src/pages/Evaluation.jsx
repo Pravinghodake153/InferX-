@@ -82,8 +82,18 @@ export default function Evaluation() {
     let tenderText = selectedProject.extractedText || '';
     let bidderData = selectedProject.extractedBidderData || [];
 
-    // Hydrate from MongoDB first (primary source for heavy data)
-    if (!tenderText || bidderData.length === 0) {
+    if (isSandbox && selectedProject.sandboxData) {
+      tenderText = typeof selectedProject.sandboxData.tender === 'string' 
+        ? selectedProject.sandboxData.tender 
+        : JSON.stringify(selectedProject.sandboxData.tender, null, 2);
+      
+      bidderData = (selectedProject.sandboxData.bidders || []).map((b, i) => ({
+        bidder_id: b.ubid || b._ubid || `SB-${i}`,
+        bidder_name: b.name || `Sandbox Bidder ${i + 1}`,
+        extracted_text: typeof b === 'string' ? b : JSON.stringify(b, null, 2),
+      }));
+    } else if (!tenderText || bidderData.length === 0) {
+      // Hydrate from MongoDB first (primary source for heavy data)
       try {
         const mongoRes = await ProjectAPI.getExtraction(selectedProject.id);
         const mongoData = mongoRes.data;
@@ -133,10 +143,9 @@ export default function Evaluation() {
     }
 
     const bidderExtractedList = isSandbox 
-      ? bidderData.filter(d => {
-          const sandboxUbids = selectedProject.sandboxBidderUbids || [];
-          const ubid = sandboxUbids[bidderIdx] || (sandboxUbids.length > 0 ? sandboxUbids[0] : null);
-          return d.bidder_id === ubid || d.bidder_id === d.bidder_ubid;
+      ? bidderData.filter((d, idx) => {
+          // In our mapped sandbox data, the index matches the original array
+          return idx === bidderIdx;
         })
       : bidderData.filter(d => {
           const bidders = selectedProject.bidders || [];
