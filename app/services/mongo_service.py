@@ -106,7 +106,22 @@ def list_projects() -> List[dict]:
         return []
     try:
         cursor = db.projects.find({}, {"_id": 0}).sort("createdAt", DESCENDING)
-        return list(cursor)
+        projects = list(cursor)
+        
+        # Auto-heal project statuses
+        for p in projects:
+            status = p.get("status")
+            if status not in ["evaluated", "consolidated"]:
+                pid = p.get("id")
+                if pid:
+                    # Check if there are evaluations for this project
+                    eval_count = db.evaluations.count_documents({"project_id": pid})
+                    if eval_count > 0:
+                        p["status"] = "evaluated"
+                        # Silently fix the database record as well
+                        db.projects.update_one({"id": pid}, {"$set": {"status": "evaluated"}})
+                        
+        return projects
     except Exception as e:
         print(f"[MongoDB] Failed to list projects: {e}")
         return []

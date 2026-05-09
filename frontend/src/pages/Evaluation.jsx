@@ -68,7 +68,12 @@ export default function Evaluation() {
         if (cancelled) return;
         if (res.data?.versions?.length > 0) {
           console.log('[Evaluation] Hydrated full evaluation versions from MongoDB');
-          updateProject(selectedProjectId, { versions: res.data.versions });
+          const updates = { versions: res.data.versions };
+          // If we found evaluations in the DB, the project is definitely evaluated!
+          if (selectedProject?.status !== 'evaluated' && selectedProject?.status !== 'consolidated') {
+            updates.status = 'evaluated';
+          }
+          updateProject(selectedProjectId, updates);
         }
       } catch (e) {
         console.warn('[Evaluation] Failed to hydrate evaluations:', e?.message);
