@@ -154,7 +154,7 @@ export default function ConsolidatedReport() {
       for (let i = 0; i < biddersToProcess.length; i++) {
         if (controller.signal.aborted) break;
         const b = biddersToProcess[i];
-        setProgress(`⚡ Evaluating bidder ${i + 1} of ${biddersToProcess.length}: ${b.bidder_name}...`);
+        setProgress(`Evaluating bidder ${i + 1} of ${biddersToProcess.length}: ${b.bidder_name}...`);
 
         const payload = {
           tender_text: tenderText,
@@ -263,7 +263,7 @@ export default function ConsolidatedReport() {
       <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', maxWidth: 450, textAlign: 'center', lineHeight: 1.5 }}>
         Compiling insights across all bidders and generating the final audit matrix takes a lot of data. We are fetching the complete report from secure cloud storage.
         <br/><br/>
-        <span style={{ color: 'var(--accent)', fontWeight: 500 }}>Hang tight! Your dashboard will be fully populated in just a moment. 📊</span>
+        <span style={{ color: 'var(--accent)', fontWeight: 500 }}>Hang tight! Your dashboard will be fully populated in just a moment.</span>
       </p>
     </div>
   );

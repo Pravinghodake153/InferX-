@@ -15,6 +15,7 @@ export default function Evaluation() {
   const toast = useToast();
 
   const [loading, setLoading] = useState(false);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [error, setError] = useState('');
   const [skipConfirmed, setSkipConfirmed] = useState(false);
   const [showPayloadModal, setShowPayloadModal] = useState(false);
@@ -223,7 +224,7 @@ export default function Evaluation() {
     }
 
     try {
-      setLoading(true);
+      setPreviewLoading(true);
       // Yield to the event loop so the browser can render the loading spinner
       // before we block the main thread with heavy Regex mask replacements
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -234,7 +235,7 @@ export default function Evaluation() {
     } catch (err) {
       setError(err.message);
     } finally {
-      setLoading(false);
+      setPreviewLoading(false);
     }
   };
 
@@ -395,7 +396,7 @@ export default function Evaluation() {
       <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', maxWidth: 450, textAlign: 'center', lineHeight: 1.5 }}>
         Evaluation data and LLM reasoning logs are quite large. We are fetching the full historical AI verdicts from secure cloud storage.
         <br/><br/>
-        <span style={{ color: 'var(--accent)', fontWeight: 500 }}>Please wait a moment. Your evaluation data will be fully visible shortly! ⚡️</span>
+        <span style={{ color: 'var(--accent)', fontWeight: 500 }}>Please wait a moment. Your evaluation data will be fully visible shortly.</span>
       </p>
     </div>
   );
@@ -460,7 +461,7 @@ export default function Evaluation() {
             <button
               className="btn btn-primary"
               onClick={handleRunEvaluation}
-              disabled={!canEvaluate || loading}
+              disabled={!canEvaluate || loading || previewLoading}
               style={{ padding: '12px 32px', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}
             >
               {loading ? <><Hourglass size={16} /> Evaluating {isSandbox ? `Bidder ${activeBidderIdx + 1}` : (selectedProject.bidders?.[activeBidderIdx]?.name || 'Bidder')}...</> : <><Zap size={16} /> Run Evaluation for Selected Bidder</>}
@@ -469,10 +470,10 @@ export default function Evaluation() {
             <button
               className="btn btn-secondary"
               onClick={handlePreviewPayload}
-              disabled={!canEvaluate || loading}
+              disabled={!canEvaluate || loading || previewLoading}
               style={{ padding: '12px 20px', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}
             >
-              {loading ? <><Hourglass size={16} /> Building...</> : <><Search size={16} /> Preview Payload</>}
+              {previewLoading ? <><Hourglass size={16} /> Loading Preview...</> : <><Search size={16} /> Preview Payload</>}
             </button>
           </div>
         </div>

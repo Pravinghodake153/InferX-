@@ -1,4 +1,5 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { BarChart2 } from 'lucide-react';
 
 const COLORS = {
   PASS: '#22c55e',
@@ -55,7 +56,7 @@ export default function ConsolidatedGraphs({ report }) {
   return (
     <div className="card" style={{ marginBottom: 24 }}>
       <div className="card-header">
-        <h3>📊 Comparative Analytics</h3>
+        <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><BarChart2 size={20} /> Comparative Analytics</h3>
       </div>
       <div style={{ padding: 16, display: 'flex', flexWrap: 'wrap', gap: 24 }}>
         

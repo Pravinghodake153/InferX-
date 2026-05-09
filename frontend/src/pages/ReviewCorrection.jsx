@@ -282,7 +282,7 @@ export default function ReviewCorrection() {
       <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', maxWidth: 450, textAlign: 'center', lineHeight: 1.5 }}>
         Tender documents contain a massive amount of text and image data. We are fetching the complete dataset from secure cloud storage.
         <br/><br/>
-        <span style={{ color: 'var(--accent)', fontWeight: 500 }}>Please wait a moment. Your extracted data will be fully visible shortly! 🚀</span>
+        <span style={{ color: 'var(--accent)', fontWeight: 500 }}>Please wait a moment. Your extracted data will be fully visible shortly.</span>
       </p>
     </div>
   );

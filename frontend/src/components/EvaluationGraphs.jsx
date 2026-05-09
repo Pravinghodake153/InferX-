@@ -1,4 +1,5 @@
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { BarChart2 } from 'lucide-react';
 
 const COLORS = {
   PASS: '#22c55e', // green
@@ -40,7 +41,7 @@ export default function EvaluationGraphs({ evals }) {
   return (
     <div className="card" style={{ marginBottom: 24 }}>
       <div className="card-header">
-        <h3>📊 Compliance Visualization</h3>
+        <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><BarChart2 size={20} /> Compliance Visualization</h3>
       </div>
       <div style={{ padding: 16, display: 'flex', gap: 24, flexWrap: 'wrap' }}>
         
