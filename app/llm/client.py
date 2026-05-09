@@ -15,71 +15,66 @@ T = TypeVar('T', bound=BaseModel)
 MAX_RETRIES = 2
 
 from google import genai
+from app.services.mongo_service import get_settings
 
-# ── Active provider state (can be changed at runtime via API) ──
-_active_provider = os.getenv("LLM_PROVIDER", "openrouter")  # "openrouter" or "gemini"
-_default_model = "gemini-2.5-flash" if _active_provider == "gemini" else "anthropic/claude-3-haiku"
-_active_model = os.getenv("LLM_MODEL", _default_model)
-_context_size = int(os.getenv("CONTEXT_SIZE", "100000"))
+# ── Dynamic settings fetchers ──
+def _get_dynamic_settings():
+    """Fetch settings from MongoDB, falling back to OS env vars."""
+    mongo_settings = get_settings() or {}
+    
+    provider = mongo_settings.get("provider") or os.getenv("LLM_PROVIDER", "openrouter")
+    default_model = "gemini-2.5-flash" if provider == "gemini" else "anthropic/claude-3-haiku"
+    model = mongo_settings.get("model") or os.getenv("LLM_MODEL", default_model)
+    context_size = int(mongo_settings.get("context_size") or os.getenv("CONTEXT_SIZE", "100000"))
+    
+    # Compile Gemini keys
+    gemini_keys = [os.getenv("GEMINI_API_KEY")]
+    
+    # Add from MongoDB if configured
+    if "gemini_keys" in mongo_settings and mongo_settings["gemini_keys"]:
+        gemini_keys.extend(mongo_settings["gemini_keys"])
+    # Add from env if configured
+    elif os.getenv("GEMINI_ADDITIONAL_KEYS"):
+        gemini_keys.extend([k.strip() for k in os.getenv("GEMINI_ADDITIONAL_KEYS").split(",")])
+        
+    gemini_keys = [k for k in gemini_keys if k] # Filter out None or empty
+    
+    # Remove duplicates but preserve order
+    seen = set()
+    unique_keys = []
+    for k in gemini_keys:
+        if k not in seen:
+            seen.add(k)
+            unique_keys.append(k)
+            
+    return provider, model, context_size, unique_keys
 
-# Configure Gemini client keys
-_gemini_keys = [os.getenv("GEMINI_API_KEY")]
-if os.getenv("GEMINI_ADDITIONAL_KEYS"):
-    _gemini_keys.extend([k.strip() for k in os.getenv("GEMINI_ADDITIONAL_KEYS").split(",")])
-_gemini_keys = [k for k in _gemini_keys if k] # Filter out None or empty
-
+# In-memory index to preserve rotation state across API calls in the same worker
 _current_key_idx = 0
-_gemini_client = None
 
-if _gemini_keys:
-    _gemini_client = genai.Client(api_key=_gemini_keys[_current_key_idx])
+def get_provider() -> str:
+    p, _, _, _ = _get_dynamic_settings()
+    return p
+
+def get_model() -> str:
+    _, m, _, _ = _get_dynamic_settings()
+    return m
+
+def get_context_size() -> int:
+    _, _, c, _ = _get_dynamic_settings()
+    return c
 
 def _switch_gemini_key():
-    global _current_key_idx, _gemini_client
-    if not _gemini_keys:
+    global _current_key_idx
+    _, _, _, keys = _get_dynamic_settings()
+    if not keys:
         return False
-    _current_key_idx = (_current_key_idx + 1) % len(_gemini_keys)
-    print(f"[Gemini] 🔄 Quota reached. Switching API Key to pool index {_current_key_idx + 1}/{len(_gemini_keys)}")
-    _gemini_client = genai.Client(api_key=_gemini_keys[_current_key_idx])
+    _current_key_idx = (_current_key_idx + 1) % len(keys)
+    print(f"[Gemini] 🔄 Quota reached. Switching API Key to pool index {_current_key_idx + 1}/{len(keys)}")
     return True
-
-def add_gemini_keys(keys: list[str]):
-    global _gemini_keys, _gemini_client, _current_key_idx
-    added = 0
-    for k in keys:
-        k = k.strip()
-        if k and k not in _gemini_keys:
-            _gemini_keys.append(k)
-            added += 1
-    
-    if added > 0:
-        print(f"[Gemini] Added {added} new API keys to the rotation pool. Total keys: {len(_gemini_keys)}")
-        if not _gemini_client and _gemini_keys:
-            _current_key_idx = 0
-            _gemini_client = genai.Client(api_key=_gemini_keys[0])
 
 # ── Collects detailed error messages for the current pipeline run ──
 _error_log = []
-
-def get_provider() -> str:
-    return _active_provider
-
-def get_model() -> str:
-    return _active_model
-
-def set_provider(provider: str, model: Optional[str] = None, context_size: Optional[int] = None):
-    global _active_provider, _active_model, _context_size
-    if provider not in ["openrouter", "gemini"]:
-        raise ValueError(f"Unknown provider: {provider}. Supported: 'openrouter', 'gemini'.")
-    _active_provider = provider
-    if model:
-        _active_model = model
-    if context_size is not None:
-        _context_size = context_size
-    print(f"[LLM] Provider switched to: {provider}, Model: {_active_model}, Context Size: {_context_size}")
-
-def get_context_size() -> int:
-    return _context_size
 
 
 def clear_error_log():
@@ -171,11 +166,13 @@ def _call_openrouter(prompt: str, schema_class: Type[T]) -> Optional[T]:
         api_key=api_key,
     )
 
+    provider, model, _, _ = _get_dynamic_settings()
+    
     for attempt in range(MAX_RETRIES + 1):
-        print(f"[OpenRouter] Attempt {attempt + 1}/{MAX_RETRIES + 1} with model {_active_model}...")
+        print(f"[OpenRouter] Attempt {attempt + 1}/{MAX_RETRIES + 1} with model {model}...")
         try:
             response = client.chat.completions.create(
-                model=_active_model,
+                model=model,
                 messages=[
                     {"role": "system", "content": SYSTEM_ROLE_PROMPT},
                     {"role": "user", "content": prompt}
@@ -202,19 +199,26 @@ def _call_openrouter(prompt: str, schema_class: Type[T]) -> Optional[T]:
 #  GEMINI IMPLEMENTATION
 # ═══════════════════════════════════════════
 def _call_gemini(prompt: str, schema_class: Type[T]) -> Optional[T]:
-    if not _gemini_client:
+    global _current_key_idx
+    provider, model, _, keys = _get_dynamic_settings()
+    
+    if not keys:
         print("[Gemini] ERROR: GEMINI_API_KEY not set.")
         return None
 
     full_prompt = f"{SYSTEM_ROLE_PROMPT}\n\n{prompt}\n\nOutput ONLY valid JSON matching the exact schema."
     
     # Allow extra retries based on how many backup keys we have
-    max_attempts = MAX_RETRIES + len(_gemini_keys)
+    max_attempts = MAX_RETRIES + len(keys)
     
     for attempt in range(max_attempts):
+        # Always dynamically instantiate client to ensure we use the current rotated key
+        idx = _current_key_idx % len(keys)
+        gemini_client = genai.Client(api_key=keys[idx])
+        
         try:
-            response = _gemini_client.models.generate_content(
-                model=_active_model,
+            response = gemini_client.models.generate_content(
+                model=model,
                 contents=full_prompt,
                 config=genai.types.GenerateContentConfig(
                     response_mime_type="application/json"
@@ -227,7 +231,7 @@ def _call_gemini(prompt: str, schema_class: Type[T]) -> Optional[T]:
             err_str = str(e).lower()
             is_quota_error = "429" in err_str or "quota" in err_str or "rate limit" in err_str
             
-            if is_quota_error and len(_gemini_keys) > 1:
+            if is_quota_error and len(keys) > 1:
                 _switch_gemini_key()
                 continue # Retry immediately with new key
                 
@@ -248,8 +252,11 @@ def call_llm(prompt: str, schema_class: Type[T]) -> Optional[T]:
         print("[LLM] ❌ LLM call aborted due to global cancel flag.")
         return None
 
-    print(f"\n[LLM] Using provider: {_active_provider.upper()} ({_active_model})")
-    if _active_provider == "gemini":
+    provider = get_provider()
+    model = get_model()
+
+    print(f"\n[LLM] Using provider: {provider.upper()} ({model})")
+    if provider == "gemini":
         return _call_gemini(prompt, schema_class)
     else:
         return _call_openrouter(prompt, schema_class)

@@ -1,13 +1,11 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { AppContext } from './appContextValue';
-import { ProjectAPI } from '../services/api';
+import { ProjectAPI, SyncAPI } from '../services/api';
 
 // ── localStorage keys ──
 const LS_PROJECTS = 'inferx_projects';
 const LS_SELECTED_ID = 'inferx_selected_project_id';
-const LS_SIDEBAR = 'inferx_sidebar_collapsed';
 const LS_LAST_ROUTE = 'inferx_last_route';
-const LS_ACTIVE_PROCESS = 'inferx_active_process';
 
 /**
  * Serialize project for localStorage cache.
@@ -68,26 +66,6 @@ function loadSelectedId() {
   } catch {
     return null;
   }
-}
-
-function loadSidebar() {
-  try {
-    return localStorage.getItem(LS_SIDEBAR) === 'true';
-  } catch {
-    return false;
-  }
-}
-
-function loadActiveProcess() {
-  try {
-    const raw = localStorage.getItem(LS_ACTIVE_PROCESS);
-    if (!raw) return null;
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
-}
-
 /**
  * Global application state — project-scoped, sidebar, and evaluation data.
  *
@@ -98,9 +76,24 @@ function loadActiveProcess() {
  *  - Heavy data (extracted text, evaluation payloads) is stored in MongoDB collections
  */
 export function AppProvider({ children }) {
-  // ── Sidebar (persisted) ──
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => loadSidebar());
-  const toggleSidebar = useCallback(() => setSidebarCollapsed(c => !c), []);
+  // ── Sidebar (persisted globally via DB) ──
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const toggleSidebar = useCallback(() => {
+    setSidebarCollapsed(c => {
+      const next = !c;
+      SyncAPI.updatePreferences({ sidebarCollapsed: next }).catch(console.error);
+      return next;
+    });
+  }, []);
+
+  // Fetch initial preferences
+  useEffect(() => {
+    SyncAPI.getPreferences().then(prefs => {
+      if (prefs && typeof prefs.sidebarCollapsed === 'boolean') {
+        setSidebarCollapsed(prefs.sidebarCollapsed);
+      }
+    }).catch(console.error);
+  }, []);
 
   // ── Projects (persisted to localStorage as cache, MongoDB as source of truth) ──
   const [projects, setProjects] = useState(() => loadProjects());
@@ -120,8 +113,31 @@ export function AppProvider({ children }) {
   // Hydration is handled in the lazy initializer above, so always true
   const hydrated = true;
 
-  // ── Active Process State (persisted for refresh resilience) ──
-  const [activeProcess, setActiveProcessState] = useState(() => loadActiveProcess());
+  // ── Active Process State (Distributed sync) ──
+  const [activeProcess, setActiveProcessState] = useState(null);
+  
+  // Distributed Polling
+  useEffect(() => {
+    const fetchProcess = async () => {
+      try {
+        const process = await SyncAPI.getProcess();
+        if (Object.keys(process).length > 0) {
+          setActiveProcessState(process);
+        } else {
+          setActiveProcessState(null);
+        }
+      } catch (err) {
+        console.warn('Failed to poll sync process:', err);
+      }
+    };
+    
+    // Initial fetch
+    fetchProcess();
+    
+    // Poll every 3 seconds
+    const interval = setInterval(fetchProcess, 3000);
+    return () => clearInterval(interval);
+  }, []);
 
   // ── Debounced MongoDB sync ref ──
   const syncTimeoutRef = useRef(null);
@@ -136,21 +152,21 @@ export function AppProvider({ children }) {
       ...meta,
     };
     setActiveProcessState(process);
-    try { localStorage.setItem(LS_ACTIVE_PROCESS, JSON.stringify(process)); } catch { /* ignore */ }
+    SyncAPI.setProcess(process).catch(console.error);
   }, []);
 
   const updateProcess = useCallback((updates) => {
     setActiveProcessState(prev => {
       if (!prev) return prev;
       const next = { ...prev, ...updates };
-      try { localStorage.setItem(LS_ACTIVE_PROCESS, JSON.stringify(next)); } catch { /* ignore */ }
+      SyncAPI.setProcess(next).catch(console.error);
       return next;
     });
   }, []);
 
   const clearProcess = useCallback(() => {
     setActiveProcessState(null);
-    try { localStorage.removeItem(LS_ACTIVE_PROCESS); } catch { /* ignore */ }
+    SyncAPI.clearProcess().catch(console.error);
   }, []);
 
   // ── Persist projects to localStorage cache + MongoDB on every change ──

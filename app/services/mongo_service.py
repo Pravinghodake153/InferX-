@@ -379,7 +379,122 @@ def _strip_base64_from_result(result) -> Any:
                 cleaned[k] = f"[BASE64_STRIPPED: {len(v):,} chars]"
             else:
                 cleaned[k] = _strip_base64_from_result(v)
+        # Mark as cleanly stripped
+        cleaned["_stripped"] = True
         return cleaned
     elif isinstance(result, list):
         return [_strip_base64_from_result(item) for item in result]
     return result
+
+# ═══════════════════════════════════════════
+#  SYSTEM SETTINGS API
+# ═══════════════════════════════════════════
+
+def get_settings() -> dict:
+    """Retrieve global system settings from MongoDB."""
+    db = get_db()
+    if db is None:
+        return {}
+    try:
+        settings = db.settings.find_one({"_id": "global_config"})
+        if settings:
+            settings.pop("_id", None)
+            return settings
+        return {}
+    except Exception as e:
+        print(f"[MongoDB] Failed to get settings: {e}")
+        return {}
+
+def update_settings(updates: dict) -> bool:
+    """Update global system settings in MongoDB."""
+    db = get_db()
+    if db is None:
+        return False
+    try:
+        db.settings.update_one(
+            {"_id": "global_config"},
+            {"$set": updates},
+            upsert=True
+        )
+        return True
+    except Exception as e:
+        print(f"[MongoDB] Failed to update settings: {e}")
+        return False
+
+# ═══════════════════════════════════════════
+#  DISTRIBUTED UI STATES (Progress & Preferences)
+# ═══════════════════════════════════════════
+
+def get_active_process() -> Optional[dict]:
+    """Get the currently running global process for cross-device sync."""
+    db = get_db()
+    if db is None:
+        return None
+    try:
+        proc = db.ui_state.find_one({"_id": "active_process"})
+        if proc:
+            proc.pop("_id", None)
+            return proc
+        return None
+    except Exception as e:
+        print(f"[MongoDB] Failed to get active process: {e}")
+        return None
+
+def set_active_process(process_data: dict) -> bool:
+    """Lock an active process globally."""
+    db = get_db()
+    if db is None:
+        return False
+    try:
+        db.ui_state.update_one(
+            {"_id": "active_process"},
+            {"$set": process_data},
+            upsert=True
+        )
+        return True
+    except Exception as e:
+        print(f"[MongoDB] Failed to set active process: {e}")
+        return False
+
+def clear_active_process() -> bool:
+    """Clear the globally active process."""
+    db = get_db()
+    if db is None:
+        return False
+    try:
+        db.ui_state.delete_one({"_id": "active_process"})
+        return True
+    except Exception as e:
+        print(f"[MongoDB] Failed to clear active process: {e}")
+        return False
+
+def get_preferences() -> dict:
+    """Get global admin UI preferences."""
+    db = get_db()
+    if db is None:
+        return {}
+    try:
+        prefs = db.ui_state.find_one({"_id": "admin_preferences"})
+        if prefs:
+            prefs.pop("_id", None)
+            return prefs
+        return {}
+    except Exception as e:
+        print(f"[MongoDB] Failed to get preferences: {e}")
+        return {}
+
+def update_preferences(updates: dict) -> bool:
+    """Update global admin UI preferences."""
+    db = get_db()
+    if db is None:
+        return False
+    try:
+        db.ui_state.update_one(
+            {"_id": "admin_preferences"},
+            {"$set": updates},
+            upsert=True
+        )
+        return True
+    except Exception as e:
+        print(f"[MongoDB] Failed to update preferences: {e}")
+        return False

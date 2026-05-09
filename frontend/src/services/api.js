@@ -118,4 +118,13 @@ export const ChatAPI = {
   sendMessage: (message, context) => api.post('/chat', { message, context }).then(res => res.data),
 };
 
+// ── Distributed UI Sync ──
+export const SyncAPI = {
+  getProcess: () => api.get('/process').then(res => res.data),
+  setProcess: (data) => api.post('/process', data).then(res => res.data),
+  clearProcess: () => api.delete('/process').then(res => res.data),
+  getPreferences: () => api.get('/preferences').then(res => res.data),
+  updatePreferences: (data) => api.post('/preferences', data).then(res => res.data),
+};
+
 export default api;

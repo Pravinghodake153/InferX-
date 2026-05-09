@@ -288,87 +288,104 @@ class ProviderRequest(BaseModel):
 
 @app.get("/api/settings")
 async def get_settings():
-    """Return current LLM provider setting and key status."""
-    from dotenv import load_dotenv as _reload_env
-    from app.llm.client import get_model, get_context_size
-    _reload_env(override=True)
+    """Return current system settings from MongoDB."""
+    from app.llm.client import get_model, get_context_size, _get_dynamic_settings
+    provider, model, context_size, gemini_keys = _get_dynamic_settings()
+    mongo_settings = mongo.get_settings()
+    
     return {
-        "provider": get_provider(),
-        "model": get_model(),
-        "context_size": get_context_size(),
-        "sandbox_api_url": os.getenv("SANDBOX_API_URL", ""),
-        "sandbox_api_key": os.getenv("SANDBOX_API_KEY", ""),
+        "provider": provider,
+        "model": model,
+        "context_size": context_size,
+        "sandbox_api_url": mongo_settings.get("sandbox_api_url") or os.getenv("SANDBOX_API_URL", ""),
+        "sandbox_api_key": mongo_settings.get("sandbox_api_key") or os.getenv("SANDBOX_API_KEY", ""),
         "available": ["openrouter", "gemini"],
         "keys": {
             "openrouter": bool(os.getenv("OPENROUTER_API_KEY")),
-            "gemini": bool(os.getenv("GEMINI_API_KEY"))
+            "gemini": len(gemini_keys) > 0
         },
-        "gemini_keys_count": len(__import__("app.llm.client", fromlist=["_gemini_keys"])._gemini_keys)
+        "gemini_keys_count": len(gemini_keys)
     }
 
 @app.post("/api/settings")
 async def update_settings(req: ProviderRequest):
-    """Switch the active LLM provider and update sandbox config."""
+    """Update global system settings in MongoDB."""
     from app.llm.client import get_model, get_context_size
     
-    # Update .env file for Sandbox keys
-    env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env")
-    lines = []
-    if os.path.exists(env_path):
-        with open(env_path, "r") as f:
-            lines = f.readlines()
-            
-    def update_env(key, value):
-        found = False
-        for i in range(len(lines)):
-            if lines[i].startswith(f"{key}="):
-                lines[i] = f"{key}={value}\n"
-                found = True
-                break
-        if not found:
-            lines.append(f"{key}={value}\n")
-
+    updates = {}
+    if req.provider is not None:
+        if req.provider not in ["openrouter", "gemini"]:
+            raise HTTPException(status_code=400, detail="Unknown provider")
+        updates["provider"] = req.provider
+    if req.model is not None:
+        updates["model"] = req.model
+    if req.context_size is not None:
+        updates["context_size"] = req.context_size
     if req.sandbox_api_url is not None:
-        update_env("SANDBOX_API_URL", req.sandbox_api_url)
-        os.environ["SANDBOX_API_URL"] = req.sandbox_api_url
+        updates["sandbox_api_url"] = req.sandbox_api_url
     if req.sandbox_api_key is not None:
-        update_env("SANDBOX_API_KEY", req.sandbox_api_key)
-        os.environ["SANDBOX_API_KEY"] = req.sandbox_api_key
+        updates["sandbox_api_key"] = req.sandbox_api_key
         
     if req.gemini_keys:
-        existing = os.getenv("GEMINI_ADDITIONAL_KEYS", "")
-        existing_list = [k.strip() for k in existing.split(",")] if existing else []
+        # Fetch existing keys from DB to append rather than overwrite
+        existing_settings = mongo.get_settings()
+        existing_keys = existing_settings.get("gemini_keys", [])
         for k in req.gemini_keys:
-            if k not in existing_list:
-                existing_list.append(k)
-        
-        new_val = ",".join(existing_list)
-        update_env("GEMINI_ADDITIONAL_KEYS", new_val)
-        os.environ["GEMINI_ADDITIONAL_KEYS"] = new_val
-        
-        from app.llm.client import add_gemini_keys
-        add_gemini_keys(req.gemini_keys)
+            if k not in existing_keys:
+                existing_keys.append(k)
+        updates["gemini_keys"] = existing_keys
 
-    if os.path.exists(env_path):
-        with open(env_path, "w") as f:
-            f.writelines(lines)
-
+    if updates:
+        mongo.update_settings(updates)
+        
+    # Audit log the setting change
     try:
-        set_provider(req.provider, model=req.model, context_size=req.context_size)
-        # Audit log the setting change
-        try:
-            audit = get_audit_service()
-            audit.log("SETTING_CHANGE", "system", {
-                "provider": get_provider(),
-                "model": get_model(),
-                "context_size": get_context_size(),
-            }, context="AI provider configuration updated")
-        except Exception:
-            pass
-        return {"status": "ok", "provider": get_provider(), "model": get_model(), "context_size": get_context_size()}
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        audit = get_audit_service()
+        audit.log("SETTING_CHANGE", "system", updates, context="System settings updated in MongoDB")
+    except Exception:
+        pass
+        
+    # Fetch final settings to return
+    from app.llm.client import _get_dynamic_settings
+    provider, model, context_size, _ = _get_dynamic_settings()
+    return {"status": "ok", "provider": provider, "model": model, "context_size": context_size}
 
+
+# ═══════════════════════════════════════════
+#  DISTRIBUTED UI SYNC API
+# ═══════════════════════════════════════════
+
+@app.get("/api/process")
+async def get_process():
+    return mongo.get_active_process() or {}
+
+@app.post("/api/process")
+async def set_process(request: Request):
+    data = await request.json()
+    success = mongo.set_active_process(data)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to sync process")
+    return {"status": "ok"}
+
+@app.delete("/api/process")
+async def clear_process():
+    mongo.clear_active_process()
+    return {"status": "ok"}
+
+@app.get("/api/preferences")
+async def get_preferences():
+    return mongo.get_preferences() or {}
+
+@app.post("/api/preferences")
+async def update_preferences(request: Request):
+    data = await request.json()
+    # Merge with existing
+    existing = mongo.get_preferences()
+    existing.update(data)
+    success = mongo.update_preferences(existing)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to save preferences")
+    return {"status": "ok"}
 
 # ═══════════════════════════════════════════
 #  EVALUATE API

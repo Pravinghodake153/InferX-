@@ -21,6 +21,7 @@ export default function TenderSetup() {
   const [editName, setEditName] = useState('');
   const [showTenderContent, setShowTenderContent] = useState(false);
   const [showBidderContent, setShowBidderContent] = useState(false);
+  const [expandedCriteria, setExpandedCriteria] = useState(new Set());
 
   const criteria = selectedProject?.extractedCriteria || [];
   const locked = selectedProject?.criteriaLocked || false;
@@ -100,6 +101,15 @@ export default function TenderSetup() {
     setEditingId(newCrit.criterion_id);
     setEditValue(newCrit.required_value);
     setEditName(newCrit.name);
+  };
+
+  const toggleExpand = (id) => {
+    setExpandedCriteria(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   };
 
   // Proceed to review
@@ -333,7 +343,11 @@ export default function TenderSetup() {
                   background: editingId === c.criterion_id ? 'var(--accent-light)' : undefined,
                 }}>
                   <td><code style={{ fontSize: '0.75rem' }}>{c.criterion_id}</code></td>
-                  <td>
+                  <td 
+                    onClick={() => !editingId && toggleExpand(c.criterion_id)}
+                    style={{ cursor: editingId ? 'default' : 'pointer', maxWidth: '400px' }}
+                    title={!expandedCriteria.has(c.criterion_id) ? "Click to expand" : "Click to collapse"}
+                  >
                     {editingId === c.criterion_id ? (
                       <input
                         className="form-input"
@@ -341,12 +355,30 @@ export default function TenderSetup() {
                         onChange={(e) => setEditName(e.target.value)}
                         style={{ fontSize: '0.8rem', width: '100%' }}
                         placeholder="Criterion Name"
+                        onClick={e => e.stopPropagation()}
                       />
                     ) : (
-                      <strong>{c.name}</strong>
+                      <strong style={{ 
+                        display: expandedCriteria.has(c.criterion_id) ? 'block' : '-webkit-box',
+                        WebkitLineClamp: expandedCriteria.has(c.criterion_id) ? 'unset' : 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
+                      }}>
+                        {c.name}
+                      </strong>
                     )}
                     {c.description && (
-                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                      <div style={{ 
+                        fontSize: '0.7rem', 
+                        color: 'var(--text-muted)', 
+                        marginTop: 4,
+                        display: expandedCriteria.has(c.criterion_id) ? 'block' : '-webkit-box',
+                        WebkitLineClamp: expandedCriteria.has(c.criterion_id) ? 'unset' : 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
+                      }}>
                         {c.description}
                       </div>
                     )}
