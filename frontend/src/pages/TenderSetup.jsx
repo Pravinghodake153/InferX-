@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/useApp';
+import { ProjectAPI } from '../services/api';
 import { AlertTriangle, Upload, FileText, Paperclip, Building2, BarChart2, Bot, Edit3, ClipboardList, Plus, Lock, CheckCircle, Edit2 } from 'lucide-react';
 
 /**
@@ -23,7 +24,42 @@ export default function TenderSetup() {
 
   const criteria = selectedProject?.extractedCriteria || [];
   const locked = selectedProject?.criteriaLocked || false;
-  const extractionDone = selectedProject?.extractionStatus === 'complete';
+  const extractionDone = selectedProject?.extractionStatus === 'complete' || !!selectedProject?.extractedText;
+
+  // Hydrate extraction data if missing locally (e.g. after refresh)
+  useEffect(() => {
+    if (!selectedProjectId) return;
+    const isSandbox = selectedProjectId.startsWith('sandbox_');
+    if (isSandbox) return; // Sandbox doesn't use MongoDB for this
+    
+    // Only fetch if missing text or criteria
+    const needsHydration = !selectedProject.extractedText || !selectedProject.extractedCriteria?.length;
+    if (!needsHydration) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await ProjectAPI.getExtraction(selectedProjectId);
+        if (cancelled) return;
+        const data = res.data;
+        if (data) {
+          const updates = {};
+          if (data.tender_text) updates.extractedText = data.tender_text;
+          if (data.bidder_data) updates.extractedBidderData = data.bidder_data;
+          if (data.raw_result && !data.raw_result._stripped) updates.extractedContent = data.raw_result;
+          if (data.criteria?.length > 0) updates.extractedCriteria = data.criteria;
+          if (Object.keys(updates).length > 0) {
+            console.log('[TenderSetup] Hydrated extraction data from MongoDB');
+            updateProject(selectedProjectId, updates);
+          }
+        }
+      } catch (e) {
+        console.warn('[TenderSetup] MongoDB hydration skipped:', e?.message);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [selectedProjectId, selectedProject?.extractedText]); // eslint-disable-line react-hooks/exhaustive-deps
+
 
   // Lock the schema
   const handleLockSchema = () => {
@@ -69,7 +105,9 @@ export default function TenderSetup() {
   // Proceed to review
   const handleProceedToReview = () => {
     if (!locked) return;
-    updateProject(selectedProjectId, { status: 'reviewed' });
+    if (selectedProject?.status !== 'evaluated') {
+      updateProject(selectedProjectId, { status: 'reviewed' });
+    }
     navigate('/review');
   };
 
