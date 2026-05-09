@@ -7,11 +7,6 @@ from typing import List, Dict, Any, Optional
 import fitz  # PyMuPDF
 
 try:
-    import pdfplumber  # type: ignore
-except Exception:  # pragma: no cover - optional dependency
-    pdfplumber = None
-
-try:
     from paddleocr import PaddleOCR  # type: ignore
 except Exception:  # pragma: no cover - optional dependency
     PaddleOCR = None
@@ -340,16 +335,7 @@ def _run_ocr_image_path(image_path: str) -> str:
     return _run_ocr_with_lang(img_array, "en")
 
 
-def _save_image_bytes(image_bytes: bytes, page_number: int, image_index: int, ext: str, prefix: str) -> str:
-    import base64
-    safe_ext = (ext or "png").lower()
-    if safe_ext == "jpeg":
-        safe_ext = "jpg"
-    
-    # Return as Base64 Data URI so it works in deployed environments (Vercel/HuggingFace)
-    # without needing a shared persistent volume or complex Firebase Storage setup.
-    b64_data = base64.b64encode(image_bytes).decode("utf-8")
-    return f"data:image/{safe_ext};base64,{b64_data}"
+
 
 
 def _extract_table_entries_for_page(pdf_path: str, page_number: int) -> List[Dict[str, Any]]:
@@ -361,49 +347,10 @@ def _extract_tables_for_page(pdf_path: str, page_number: int) -> List[str]:
 
 
 def _extract_images_for_page(doc: fitz.Document, page: fitz.Page, page_number: int, max_images: int = 4, prefix: str = "doc") -> List[Dict[str, Any]]:
-    image_entries: List[Dict[str, Any]] = []
-    try:
-        image_list = page.get_images(full=True) or []
-    except Exception as exc:
-        print(f"Warning: Could not inspect images on page {page_number}: {exc}")
-        return image_entries
+    # Image extraction disabled to prevent OOM errors and save processing time for 1000+ page documents.
+    # The frontend is already equipped to handle missing image URLs with a fallback UI.
+    return []
 
-    for image_index, image_info in enumerate(image_list[:max_images], start=1):
-        try:
-            xref = image_info[0]
-            extracted = doc.extract_image(xref)
-            image_bytes = extracted.get("image", b"")
-            ext = extracted.get("ext", "bin")
-            width = extracted.get("width")
-            height = extracted.get("height")
-            image_url = ""
-            if image_bytes:
-                image_url = _save_image_bytes(image_bytes, page_number, image_index, ext, prefix)
-
-            image_bbox = [0.0, 0.0, float(page.rect.width), float(page.rect.height)]
-            try:
-                rects = page.get_image_rects(xref)
-                if rects:
-                    first = rects[0]
-                    image_bbox = [float(first.x0), float(first.y0), float(first.x1), float(first.y1)]
-            except Exception:
-                pass
-
-            image_entries.append({
-                "page": page_number,
-                "index": image_index,
-                "xref": xref,
-                "width": width,
-                "height": height,
-                "ext": ext,
-                "image_ref": f"page_{page_number}_image_{image_index}.{ext}",
-                "image_url": image_url,
-                "bbox": image_bbox,
-                "image_bytes_b64": base64.b64encode(image_bytes).decode("utf-8") if image_bytes else ""
-            })
-        except Exception as exc:
-            print(f"Warning: Could not extract image {image_index} on page {page_number}: {exc}")
-    return image_entries
 
 
 def _extract_plain_pdf_text(path: str) -> str:
@@ -1006,7 +953,9 @@ def extract_image_package(path: str) -> Dict[str, Any]:
         with open(path, "rb") as f:
             image_bytes = f.read()
 
-        image_url = _save_image_bytes(image_bytes, 1, 1, ext, "image")
+        import base64
+        b64_data = base64.b64encode(image_bytes).decode("utf-8")
+        image_url = f"data:image/{ext};base64,{b64_data}"
         ocr_text = _run_ocr_image_path(path).strip()
         text_source = "OCR" if ocr_text else "Image (no OCR text)"
         ocr_status = "available" if ocr_text else "empty"
@@ -1043,8 +992,7 @@ def extract_image_package(path: str) -> Dict[str, Any]:
             "image_url": image_url,
             "bbox": [0.0, 0.0, float(width), float(height)],
             "width": width,
-            "height": height,
-            "image_bytes_b64": base64.b64encode(image_bytes).decode("utf-8") if image_bytes else "",
+            "height": height
         })
         package["context_text"] = f"[Page 1 | IMAGE | {text_source}]\n{page_text}".strip()
         return package

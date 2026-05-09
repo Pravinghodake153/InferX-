@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useApp } from '../context/useApp';
 import { ProjectAPI } from '../services/api';
 import { MASK_TYPES, createMaskToken, renderMaskedText, autoDetectMasks } from './reviewUtils';
-import { Edit3, Image, BarChart2, Lock, Eye, FileText, Play, Search, Link as LinkIcon, Shield, Settings, Sparkles, AlertTriangle, CheckCircle, Save, XCircle, Hourglass } from 'lucide-react';
+import { Edit3, Image, BarChart2, Lock, Eye, FileText, Play, Link as LinkIcon, Shield, Settings, Sparkles, AlertTriangle, CheckCircle, Save, XCircle, Hourglass } from 'lucide-react';
 
 export default function ReviewCorrection() {
   const { selectedProject, updateProject, selectedProjectId } = useApp();
@@ -345,16 +345,16 @@ export default function ReviewCorrection() {
 
 
       {/* ── THREE PANEL LAYOUT ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: showOriginal ? '1fr 1.2fr 320px' : '1fr 320px', gap: 12, flex: 1, minHeight: 0, transition: 'grid-template-columns 0.2s ease' }}>
+      <div className="dashboard-content" style={{ display: 'grid', gridTemplateColumns: viewMode === 'image' ? '1fr' : (showOriginal ? '1.2fr 1fr 320px' : '1fr 320px'), gap: 20, height: 'calc(100vh - 180px)' }}>
 
-        {/* LEFT — Original Document */}
-        {showOriginal && (
+        {/* LEFT — Original Document / Image Grid */}
+        {(showOriginal || viewMode === 'image') && (
         <div className="card" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <div className="card-header" style={{ background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-color)', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h3 style={{ fontSize: '0.85rem', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}><FileText size={16} /> Original</h3>
             <div style={{ display: 'flex', gap: 8 }}>
               {fileUrl && <button className="btn btn-sm btn-secondary" onClick={handleFullscreen} title="Open in new tab">⛶</button>}
-              <button className="btn btn-sm btn-secondary" onClick={() => setShowOriginal(false)} title="Hide Panel">◀</button>
+              {viewMode === 'text' && <button className="btn btn-sm btn-secondary" onClick={() => setShowOriginal(false)} title="Hide Panel">◀</button>}
             </div>
           </div>
           <div style={{ flex: 1, overflow: 'auto', background: 'var(--bg-primary)', padding: viewMode === 'image' ? 12 : 0 }}>
@@ -390,6 +390,7 @@ export default function ReviewCorrection() {
         )}
 
         {/* CENTER — Extracted Data */}
+        {viewMode === 'text' && (
         <div className="card" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }} ref={centerRef}>
           <div className="card-header" style={{ background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-color)', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -398,7 +399,7 @@ export default function ReviewCorrection() {
                   <Play size={12} className="inline-icon"/> Show Original
                 </button>
               )}
-              <h3 style={{ fontSize: '0.85rem', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>{viewMode === 'text' ? <><BarChart2 size={16} /> Extracted Text</> : <><Search size={16} /> Image OCR Text</>}</h3>
+              <h3 style={{ fontSize: '0.85rem', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}><BarChart2 size={16} /> Extracted Text</h3>
             </div>
           </div>
           <div style={{ flex: 1, padding: 14, overflowY: 'auto', background: 'var(--bg-primary)' }} onMouseUp={handleMouseUp}>
@@ -422,16 +423,6 @@ export default function ReviewCorrection() {
               </div>
             )}
 
-            {/* IMAGE VIEW */}
-            {viewMode === 'image' && (
-              selectedImageIdx !== null && allImages[selectedImageIdx] ? (
-                <div>
-                  <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 8 }}>OCR text from Page {allImages[selectedImageIdx].pageNum}, Image #{allImages[selectedImageIdx].index}</p>
-                  <div className="ext-block" data-block-idx={selectedImageIdx}>{renderMasked(pages.find(p => p.page_num === allImages[selectedImageIdx].pageNum)?.ocr_text || pages.find(p => p.page_num === allImages[selectedImageIdx].pageNum)?.text || 'No OCR text for this image.')}</div>
-                </div>
-              ) : <div className="empty-state" style={{ border: 'none', marginTop: 40 }}><p>Select an image from the left panel.</p></div>
-            )}
-
 
             {/* SELECTION POPUP */}
             {popup && !maskPicker && (
@@ -449,8 +440,10 @@ export default function ReviewCorrection() {
             )}
           </div>
         </div>
+        )}
 
         {/* RIGHT — Action Panel */}
+        {viewMode === 'text' && (
         <div className="card" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <div className="card-header" style={{ background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-color)', padding: '10px 14px' }}>
             <h3 style={{ fontSize: '0.85rem', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}><Settings size={16} /> Actions</h3>
@@ -522,6 +515,7 @@ export default function ReviewCorrection() {
             )}
           </div>
         </div>
+        )}
       </div>
       {/* Image Fullscreen Modal */}
       {fullscreenImage && (

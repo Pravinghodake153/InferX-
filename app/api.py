@@ -132,29 +132,21 @@ def _extract_document_payload(file_path: str, filename: str):
     if ext == ".pdf":
         package = extract_pdf_package(file_path)
         text = package.get("context_text", "")
-        layout = extract_pdf_layout(file_path)
-        layout_debug = extract_layout_text(file_path)
-        return text, package, layout, layout_debug
+        return text, package, [], []
 
     if ext == ".docx":
         text = extract_docx_text(file_path)
         package = extract_docx_package(file_path)
-        layout = text_to_layout(text)
-        layout_debug = [{"page": 1, "text": text or ""}]
-        return text, package, layout, layout_debug
+        return text, package, [], []
 
     if ext in {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff"}:
         package = extract_image_package(file_path)
         text = package.get("context_text", "")
-        layout = extract_image_layout(file_path)
-        layout_debug = extract_image_layout_debug(file_path)
-        return text, package, layout, layout_debug
+        return text, package, [], []
 
     text = load_text(file_path)
     package = extract_text_package(text)
-    layout = text_to_layout(text)
-    layout_debug = [{"page": 1, "text": text or ""}]
-    return text, package, layout, layout_debug
+    return text, package, [], []
 
 
 # ═══════════════════════════════════════════

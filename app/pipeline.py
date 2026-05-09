@@ -54,8 +54,15 @@ def clean_ocr_text_conditionally(text: str) -> Tuple[str, bool, float]:
     If so, calls LLM to clean it. Returns (cleaned_text, was_cleaned, duration).
     """
     start = time.time()
-    # Detect Hindi characters (Devanagari block)
+    
+    # 1. Skip if empty or no Hindi
     if not text or not re.search(r'[\u0900-\u097F]', text):
+        return text, False, 0.0
+        
+    # 2. Skip if text is massively large (e.g., > 10,000 words) to prevent LLM timeouts/OOM
+    word_count = len(text.split())
+    if word_count > 10000:
+        print(f"[PIPELINE]   Skipping OCR cleaner: Text too large ({word_count} words). Relying on raw OCR.")
         return text, False, 0.0
     
     print("[PIPELINE]   Detected Hindi/Mixed text — running OCR cleaner...")
