@@ -23,6 +23,7 @@ import os
 import uuid
 from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional, Literal
+from app.services.mongo_service import get_db
 
 ActionType = Literal[
     "PII_REVEAL",
@@ -105,6 +106,9 @@ class AuditService:
 
         # Write to local file (append-only)
         self._write_local(entry)
+        
+        # Dual-write to MongoDB if available
+        self._write_mongo(entry)
 
         return entry
 
@@ -117,17 +121,8 @@ class AuditService:
     ) -> List[Dict[str, Any]]:
         """
         Query audit logs with optional filters.
-
-        Args:
-            action: Filter by action type
-            officer_id: Filter by officer
-            project_ubid: Filter by project UBID
-            limit: Maximum number of entries to return
-
-        Returns:
-            List of matching log entries (newest first)
         """
-        logs = self._read_all_local()
+        logs = self._read_all()
 
         # Apply filters
         if action:
@@ -144,16 +139,8 @@ class AuditService:
     def verify_chain(self) -> Dict[str, Any]:
         """
         Verify the SHA-256 hash chain integrity of the entire audit log.
-
-        Returns:
-            {
-                "valid": True/False,
-                "total_entries": int,
-                "broken_at": int or None,  # index of first broken entry
-                "message": str
-            }
         """
-        logs = self._read_all_local()
+        logs = self._read_all()
 
         if not logs:
             return {
@@ -232,9 +219,34 @@ class AuditService:
 
         return entries
 
+    def _write_mongo(self, entry: Dict[str, Any]):
+        """Write a single entry to MongoDB."""
+        db = get_db()
+        if db is not None:
+            try:
+                db.audit_logs.insert_one(entry.copy())
+            except Exception as e:
+                print(f"[AuditService] ERROR writing to MongoDB: {e}")
+
+    def _read_all(self) -> List[Dict[str, Any]]:
+        """Read all entries, preferring MongoDB over local file."""
+        db = get_db()
+        if db is not None:
+            try:
+                # Need oldest first to verify chain!
+                cursor = db.audit_logs.find({}, {"_id": 0}).sort("timestamp", 1)
+                mongo_entries = list(cursor)
+                if mongo_entries:
+                    return mongo_entries
+            except Exception as e:
+                print(f"[AuditService] ERROR reading from MongoDB: {e}")
+                
+        # Fallback to local
+        return self._read_all_local()
+
     def _get_last_hash(self) -> str:
         """Get the hash of the last entry in the log file for chain continuity."""
-        entries = self._read_all_local()
+        entries = self._read_all()
         if entries:
             return entries[-1].get("sha256", "")
         return ""
