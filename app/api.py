@@ -31,7 +31,7 @@ from app.ingestion.pdf import (
     load_text,
     text_to_layout,
 )
-from app.llm.client import get_provider, set_provider
+from app.llm.client import get_provider
 import app.llm.client as llm_client
 from app.engine.export import (
     generate_pdf_report,
