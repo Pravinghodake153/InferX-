@@ -88,6 +88,25 @@ export default function Evaluation() {
     let tenderText = selectedProject.extractedText || '';
     let bidderData = selectedProject.extractedBidderData || [];
 
+    // If missing from local cache (e.g. opened directly on this page), fetch dynamically from DB!
+    if (!isSandbox && (!tenderText || bidderData.length === 0)) {
+      try {
+        const res = await ProjectAPI.getExtraction(selectedProjectId);
+        if (res.data) {
+          if (res.data.tender_text) tenderText = res.data.tender_text;
+          if (res.data.bidder_data) bidderData = res.data.bidder_data;
+          
+          // Optionally hydrate local state in background so we don't have to fetch again
+          updateProject(selectedProjectId, { 
+            extractedText: tenderText, 
+            extractedBidderData: bidderData 
+          });
+        }
+      } catch (e) {
+        console.warn("Failed to fetch extraction data on the fly", e);
+      }
+    }
+
     if (isSandbox && selectedProject.sandboxData) {
       tenderText = typeof selectedProject.sandboxData.tender === 'string' 
         ? selectedProject.sandboxData.tender 
@@ -196,21 +215,24 @@ export default function Evaluation() {
   };
 
   const handlePreviewPayload = async () => {
+    // If an evaluation has already been run for this bidder, show the exact payload that was sent
+    if (activeVersion?.payload_sent) {
+      setPreviewPayload(activeVersion.payload_sent);
+      setShowPayloadModal(true);
+      return;
+    }
+
     try {
       setLoading(true);
-      // Always build a fresh preview with CURRENT masks applied
+      // Yield to the event loop so the browser can render the loading spinner
+      // before we block the main thread with heavy Regex mask replacements
+      await new Promise(resolve => setTimeout(resolve, 100));
+
       const p = await buildPayload();
       setPreviewPayload(p);
       setShowPayloadModal(true);
     } catch (err) {
-      // Fallback: if fresh build fails (e.g., extraction data not available),
-      // show the persisted payload from the last evaluation run
-      if (activeVersion?.payload_sent) {
-        setPreviewPayload(activeVersion.payload_sent);
-        setShowPayloadModal(true);
-      } else {
-        setError(err.message);
-      }
+      setError(err.message);
     } finally {
       setLoading(false);
     }
@@ -450,7 +472,7 @@ export default function Evaluation() {
               disabled={!canEvaluate || loading}
               style={{ padding: '12px 20px', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}
             >
-              <Search size={16} /> Preview Payload
+              {loading ? <><Hourglass size={16} /> Building...</> : <><Search size={16} /> Preview Payload</>}
             </button>
           </div>
         </div>
